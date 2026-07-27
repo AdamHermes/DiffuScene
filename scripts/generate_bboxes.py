@@ -50,7 +50,7 @@ def main(argv):
         os.environ["PATH_TO_SCENES"] = pkl_files[0]
         print(f"Set PATH_TO_SCENES to {pkl_files[0]}")
     else:
-        raise FileNotFoundError("Could not find threed_front.pkl in ../datasets/")
+        print("Warning: threed_front.pkl not found (not needed for cached dataset)")
         
     if 'text' in config["data"]["encoding_type"] and 'textfix' not in config["data"]["encoding_type"]:
         config["data"]["encoding_type"] = config["data"]["encoding_type"].replace('text', 'textfix')
