@@ -14,6 +14,7 @@ import sys
 
 import numpy as np
 import torch
+import json
 
 from training_utils import load_config
 from utils import floor_plan_from_scene, export_scene, get_textured_objects_in_scene
@@ -291,6 +292,16 @@ def main(argv):
 
     classes = np.array(dataset.class_labels)
     print('class labels:', classes, len(classes))
+    
+    # Initialize dictionary for JSON export
+    export_data = {
+        "scene_ids": [],
+        "class_labels": [],
+        "translations": [],
+        "sizes": [],
+        "angles": []
+    }
+    
     for i in range(args.n_sequences):
         if args.fix_order:
             if i < len(dataset):
@@ -330,6 +341,14 @@ def main(argv):
             boxes["angles"]
         ], dim=-1).cpu().numpy()
         print('Generated bbox:', bbox_params_t.shape)
+
+        # Collect data for collision.py JSON
+        unique_scene_id = "{}_{}_{:03d}".format(current_scene.scene_id, scene_idx, i)
+        export_data["scene_ids"].append(unique_scene_id)
+        export_data["class_labels"].append(boxes["class_labels"][0].cpu().numpy().tolist())
+        export_data["translations"].append(boxes["translations"][0].cpu().numpy().tolist())
+        export_data["sizes"].append(boxes["sizes"][0].cpu().numpy().tolist())
+        export_data["angles"].append(boxes["angles"][0].cpu().numpy().tolist())
 
 
         if args.retrive_objfeats:
@@ -466,6 +485,12 @@ def main(argv):
             print('the length of samples[description]: {:d}'.format( len(samples['description']) ) )
             print('text description {}'.format( samples['description']) )
             open(path_to_texts, 'w').write( ''.join(samples['description']) )
+
+    # Save export_data to JSON at the end
+    json_path = os.path.join(args.output_directory, "collision_params.json")
+    with open(json_path, 'w', encoding='utf-8') as f:
+        json.dump(export_data, f, indent=2)
+    print(f"Saved collision parameters to {json_path}")
 
 
 if __name__ == "__main__":
