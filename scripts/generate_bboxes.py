@@ -4,6 +4,7 @@ import sys
 import numpy as np
 import torch
 import json
+import glob
 
 from training_utils import load_config
 from scene_synthesis.datasets import filter_function, get_dataset_raw_and_encoded
@@ -27,16 +28,30 @@ def main(argv):
         os.makedirs(args.output_directory)
 
     config = load_config(args.config_file)
-    # Dynamically fix hardcoded paths to point to the local Colab dataset folder
-    import os
-    colab_dataset_path = "../datasets" # Since script runs from scripts/
-    if os.path.exists("../datasets/3D-Front_preprocessed"):
-        colab_dataset_path = "../datasets/3D-Front_preprocessed"
-    if os.path.exists("../datasets/3d_front_processed"):
-        colab_dataset_path = "../datasets/3d_front_processed"
-    config["data"]["dataset_directory"] = config["data"]["dataset_directory"].replace("/cluster/balrog/jtang/3d_front_processed", colab_dataset_path)
+    
+    # 1. Dynamically find the dataset directory
+    stats_files = glob.glob("../datasets/**/dataset_stats.txt", recursive=True)
+    target_dir = None
+    for f in stats_files:
+        if "bedrooms" in f:
+            target_dir = os.path.dirname(f)
+            break
+            
+    if target_dir is None:
+        raise FileNotFoundError("Could not find dataset_stats.txt for bedrooms in ../datasets/")
+        
+    config["data"]["dataset_directory"] = target_dir
     if "train_stats_file" in config["network"].get("diffusion_kwargs", {}):
-        config["network"]["diffusion_kwargs"]["train_stats_file"] = config["network"]["diffusion_kwargs"]["train_stats_file"].replace("/cluster/balrog/jtang/3d_front_processed", colab_dataset_path)
+        config["network"]["diffusion_kwargs"]["train_stats_file"] = os.path.join(target_dir, "dataset_stats.txt")
+
+    # 2. Dynamically find threed_front.pkl
+    pkl_files = glob.glob("../datasets/**/threed_front.pkl", recursive=True)
+    if pkl_files:
+        os.environ["PATH_TO_SCENES"] = pkl_files[0]
+        print(f"Set PATH_TO_SCENES to {pkl_files[0]}")
+    else:
+        raise FileNotFoundError("Could not find threed_front.pkl in ../datasets/")
+        
     if 'text' in config["data"]["encoding_type"] and 'textfix' not in config["data"]["encoding_type"]:
         config["data"]["encoding_type"] = config["data"]["encoding_type"].replace('text', 'textfix')
     if "no_prm" not in config["data"]["encoding_type"]:
