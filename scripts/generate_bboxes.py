@@ -90,11 +90,11 @@ def main(argv):
         samples = dataset[scene_idx]
         print("{} / {}: Generating layout for scene {}".format(i, args.n_sequences, current_scene.scene_id))
 
-        room_mask = current_scene.room_mask.unsqueeze(0).unsqueeze(0) if hasattr(current_scene, 'room_mask') else None
+        room_mask = torch.from_numpy(current_scene.room_mask).unsqueeze(0).unsqueeze(0) if hasattr(current_scene, "room_mask") else None
         
         # Simplified generation
         bbox_params = network.generate_layout(
-            room_mask=room_mask.to(device) if room_mask is not None else None,
+            room_mask=room_mask.to(device).float() if room_mask is not None else None,
             num_points=config["network"]["sample_num_points"],
             point_dim=config["network"]["point_dim"],
             text=samples['description'] if 'description' in samples.keys() else None,
