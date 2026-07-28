@@ -1,5 +1,8 @@
+import argparse
+import datetime
 import json
 import numpy as np
+import os
 
 def _obb_corners_xz(cx, cz, l, w, angle_rad):
     cos_t, sin_t = np.cos(angle_rad), np.sin(angle_rad)
@@ -51,8 +54,11 @@ def check_collision(box_i, ang_i, box_j, ang_j):
     return True
 
 def main():
-    json_path = '../../DiffuScene_Results/collision_params.json'
-    with open(json_path, 'r') as f:
+    parser = argparse.ArgumentParser()
+    parser.add_argument('--json_path', type=str, default='../../DiffuScene_Results/collision_params.json')
+    args = parser.parse_args()
+
+    with open(args.json_path, 'r') as f:
         data = json.load(f)
 
     num_scenes = len(data['scene_ids'])
@@ -61,7 +67,6 @@ def main():
     collided_objects = 0
     collided_scenes = 0
 
-    # DiffuScene might have `objectness`, if not present, we consider all as valid.
     has_objectness = 'objectness' in data
 
     for i in range(num_scenes):
@@ -75,15 +80,12 @@ def main():
         N = len(sizes)
         labels_idx = np.argmax(class_labels, axis=-1)
 
-        # Build list of valid objects
         valid_objs = []
         for j in range(N):
-            # Check objectness if available
             if objectness is not None and objectness[j][0] <= 0:
                 continue
             
-            # Skip layout, floor, ceiling, lamps like in echoscene
-            # echoscene ignores: 0, 6, 14, and 7
+            # Skip layout(0), floor(6), ceiling(14), lamps(7)
             if labels_idx[j] in [0, 6, 14, 7]:
                 continue
                 
@@ -117,8 +119,15 @@ def main():
     col_obj = collided_objects / total_objects if total_objects > 0 else 0
     col_scene = collided_scenes / num_scenes if num_scenes > 0 else 0
 
-    print("ColObj:", col_obj)
-    print("ColScene:", col_scene)
+    timestamp = datetime.datetime.now().strftime('%Y%m%d_%H%M%S')
+    log_filename = f"eval_collision_{timestamp}.log"
+    log_content = f"File: {args.json_path}\nColObj: {col_obj:.6f} ({collided_objects}/{total_objects})\nColScene: {col_scene:.6f} ({collided_scenes}/{num_scenes})\n"
+    
+    print(log_content)
+    with open(log_filename, 'a') as f:
+        f.write(log_content)
+    print(f"Results appended to {log_filename}")
 
 if __name__ == '__main__':
     main()
+
