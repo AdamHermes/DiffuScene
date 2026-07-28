@@ -4,6 +4,8 @@ channels:
   - pytorch
   - defaults
 dependencies:
+  - gcc_linux-64
+  - gxx_linux-64
   - cython=0.29.32
   - numpy=1.21.3
   - networkx=2.5.1
