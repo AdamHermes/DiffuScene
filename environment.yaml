@@ -16,10 +16,10 @@ dependencies:
   - pillow=7.2.0
   - scipy=1.8.1
   - tqdm=4.64.1
-  - trimesh=3.12.7
   - matplotlib=3.3.1
   - wxpython=4.0.7
   - pip:
+    - trimesh==3.12.7
     - simple_3dviz==0.4.0
     - pytorch-fast-transformers==0.4.0
     - num2words
