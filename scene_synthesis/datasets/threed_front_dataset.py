@@ -617,7 +617,7 @@ class OrderedDataset(DatasetDecoratorBase):
 
 ####
 import random
-import torchtext
+# import torchtext
 from num2words import num2words
 from nltk.tokenize import word_tokenize
 from .utils_text import compute_rel, get_article
