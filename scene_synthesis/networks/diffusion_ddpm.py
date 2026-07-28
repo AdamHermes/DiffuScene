@@ -360,9 +360,10 @@ class GaussianDiffusion:
 
         """
 
+        from tqdm import tqdm
         assert isinstance(shape, (tuple, list))
         img_t = noise_fn(size=shape, dtype=torch.float, device=device)
-        for t in reversed(range(0, self.num_timesteps if not keep_running else len(self.betas))):
+        for t in tqdm(reversed(range(0, self.num_timesteps if not keep_running else len(self.betas))), desc="Diffusion Steps"):
             t_ = torch.empty(shape[0], dtype=torch.int64, device=device).fill_(t)
             img_t = self.p_sample(denoise_fn=denoise_fn, data=img_t,t=t_, condition=condition, condition_cross=condition_cross, noise_fn=noise_fn,
                                   clip_denoised=clip_denoised, return_pred_xstart=False)
