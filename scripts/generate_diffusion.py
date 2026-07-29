@@ -473,6 +473,14 @@ def main(argv):
                 whole_scene_mesh = merge_meshes( trimesh_meshes )
                 o3d.io.write_triangle_mesh(path_to_scene, whole_scene_mesh)
 
+                individual_dir = os.path.join(path_to_objs, filename + "_individual_objs")
+                if not os.path.exists(individual_dir):
+                    os.mkdir(individual_dir)
+                
+                for obj_idx, single_mesh in enumerate(trimesh_meshes):
+                    obj_path = os.path.join(individual_dir, "object_{:03d}.obj".format(obj_idx))
+                    single_mesh.export(obj_path)
+
             if args.retrive_objfeats:
                 if trimesh_meshes_onlysize is not None:
                     # Create a trimesh scene and export it
