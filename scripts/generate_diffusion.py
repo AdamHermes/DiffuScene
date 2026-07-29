@@ -222,8 +222,20 @@ def main(argv):
     objects_dataset = ThreedFutureDataset.from_pickled_dataset(
         args.path_to_pickled_3d_futute_models
     )
-    print("Loaded {} 3D-FUTURE models".format(len(objects_dataset)))
-
+    
+    # Ghi đè lại đường dẫn (nếu file pickle đang trỏ sai nơi)
+    my_local_path = "/content/drive/MyDrive/DiffuScene/3D-FUTURE-model"                      
+    for obj in objects_dataset.objects:                                             
+        obj.path_to_models = my_local_path 
+    
+    # Filter out models that don't exist in the folder (e.g. if the user only has a subset of the dataset)
+    existing_objects = []
+    for obj in objects_dataset.objects:
+        if os.path.exists(obj.raw_model_norm_pc_lat32_path):
+            existing_objects.append(obj)
+            
+    objects_dataset.objects = existing_objects
+    print("Loaded {} 3D-FUTURE models".format(len(objects_dataset.objects)))
     raw_dataset, dataset = get_dataset_raw_and_encoded(
         config["data"],
         filter_fn=filter_function(
@@ -460,6 +472,14 @@ def main(argv):
                 path_to_scene = os.path.join(path_to_objs, filename+args.mesh_format)
                 whole_scene_mesh = merge_meshes( trimesh_meshes )
                 o3d.io.write_triangle_mesh(path_to_scene, whole_scene_mesh)
+
+                individual_dir = os.path.join(path_to_objs, filename + "_individual_objs")
+                if not os.path.exists(individual_dir):
+                    os.mkdir(individual_dir)
+                
+                for obj_idx, single_mesh in enumerate(trimesh_meshes):
+                    obj_path = os.path.join(individual_dir, "object_{:03d}.obj".format(obj_idx))
+                    single_mesh.export(obj_path)
 
             if args.retrive_objfeats:
                 if trimesh_meshes_onlysize is not None:
