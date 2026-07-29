@@ -5,11 +5,42 @@ source ~/.bashrc
 conda tos accept --override-channels --channel https://repo.anaconda.com/pkgs/main
 conda tos accept --override-channels --channel https://repo.anaconda.com/pkgs/r
 
-conda env create -f environment.yaml
+conda create -n diffuscene python=3.8 -y
 conda activate diffuscene
+pip install torch==1.11.0+cu113 torchvision==0.12.0+cu113 torchaudio==0.11.0 --extra-index-url https://download.pytorch.org/whl/cu113                                                                           
+
+pip install simple_3dviz pytorch-fast-transformers num2words einops_exts kornia rotary_embedding_torch transformers pyvista wandb trimesh pyrr
+pip install git+https://github.com/openai/CLIP.git
 
 python setup.py build_ext --inplace
 pip install -e .
+
+pip install torch==1.11.0+cu113 torchvision==0.12.0+cu113 torchaudio==0.11.0 --extra-index-url https://download.pytorch.org/whl/cu113                                                                           
+                                                                                                                   
+pip install \                                                                                                 
+        cython==0.29.32 \                                                                                          
+        numpy==1.21.3 \                                                                                            
+        networkx==2.5.1 \                                                                                          
+        pyrr==0.10.3 \                                                                                             
+        pyyaml==5.3.1 \                                                                                            
+        pillow==7.2.0 \                                                                                            
+        scipy==1.8.1 \                                                                                             
+        tqdm==4.64.1 \                                                                                             
+        trimesh==3.12.7 \                                                                                          
+        matplotlib==3.3.1 \                                                                                        
+        simple_3dviz==0.4.0 \                                                                                      
+        num2words \                                                                                                
+        nltk \                                                                                                     
+        einops_exts \                                                                                              
+        kornia==0.6.9 \                                                                                            
+        rotary_embedding_torch \                                                                                   
+        transformers==4.25.1 \                                                                                     
+        pyvista==0.43.3 \                                                                                          
+        torchtext \                                                                                                
+        seaborn \                                                                                                  
+        wandb \                                                                                                    
+        shapely \                                                                                                  
+        clip==0.2.0  
 
 cd ChamferDistancePytorch/chamfer3D
 python setup.py install
