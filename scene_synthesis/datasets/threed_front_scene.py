@@ -259,12 +259,14 @@ class ThreedFutureModel(BaseThreedFutureModel):
         return points
     
     def raw_model_norm_pc_lat(self):
-        latent = np.load(self.raw_model_norm_pc_lat_path)["latent"].astype(np.float32)
-        return latent
+        if not hasattr(self, '_cached_lat'):
+            self._cached_lat = np.load(self.raw_model_norm_pc_lat_path)["latent"].astype(np.float32)
+        return self._cached_lat
 
     def raw_model_norm_pc_lat32(self):
-        latent = np.load(self.raw_model_norm_pc_lat32_path)["latent"].astype(np.float32)
-        return latent
+        if not hasattr(self, '_cached_lat32'):
+            self._cached_lat32 = np.load(self.raw_model_norm_pc_lat32_path)["latent"].astype(np.float32)
+        return self._cached_lat32
 
     def raw_model(self):
         try:
