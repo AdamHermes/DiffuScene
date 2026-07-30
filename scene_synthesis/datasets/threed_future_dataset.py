@@ -27,6 +27,8 @@ class ThreedFutureDataset(object):
 
     def get_closest_furniture_to_box(self, query_label, query_size):
         objects = self._filter_objects_by_label(query_label)
+        if not objects:
+            objects = self.objects
 
         mses = {}
         for i, oi in enumerate(objects):
@@ -36,6 +38,8 @@ class ThreedFutureDataset(object):
 
     def get_closest_furniture_to_2dbox(self, query_label, query_size):
         objects = self._filter_objects_by_label(query_label)
+        if not objects:
+            objects = self.objects
 
         mses = {}
         for i, oi in enumerate(objects):
@@ -48,6 +52,8 @@ class ThreedFutureDataset(object):
 
     def get_closest_furniture_to_objfeats(self, query_label, query_objfeat):
         objects = self._filter_objects_by_label(query_label)
+        if not objects:
+            objects = self.objects
 
         mses = {}
         for i, oi in enumerate(objects):
@@ -60,6 +66,8 @@ class ThreedFutureDataset(object):
 
     def get_closest_furniture_to_objfeats_and_size(self, query_label, query_objfeat, query_size):
         objects = self._filter_objects_by_label(query_label)
+        if not objects:
+            objects = self.objects
 
         objs = []
         mses_feat = []
