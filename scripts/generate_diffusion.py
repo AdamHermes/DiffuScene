@@ -236,9 +236,16 @@ def main(argv):
     
     # Filter out models that don't exist in the folder (e.g. if the user only has a subset of the dataset)
     existing_objects = []
+    print(f"Start filtering objects from {my_local_path} ...")
+    try:
+        available_jids = set(os.listdir(my_local_path))
+    except FileNotFoundError:
+        available_jids = set()
+
     for obj in objects_dataset.objects:
-        if os.path.exists(obj.raw_model_norm_pc_lat32_path):
-            existing_objects.append(obj)
+        if obj.model_jid in available_jids:
+            if os.path.exists(obj.raw_model_norm_pc_lat32_path):
+                existing_objects.append(obj)
             
     objects_dataset.objects = existing_objects
     print("Loaded {} 3D-FUTURE models".format(len(objects_dataset.objects)))

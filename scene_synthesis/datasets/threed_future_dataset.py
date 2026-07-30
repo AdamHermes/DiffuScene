@@ -26,6 +26,8 @@ class ThreedFutureDataset(object):
         return [oi for oi in self.objects if oi.label == label]
 
     def get_closest_furniture_to_box(self, query_label, query_size):
+        if not self.objects:
+            raise ValueError("The dataset has no 3D models loaded. Please check if your 3D-FUTURE-model directory path is correct and accessible.")
         objects = self._filter_objects_by_label(query_label)
         if not objects:
             objects = self.objects
@@ -37,6 +39,8 @@ class ThreedFutureDataset(object):
         return sorted_mses[0]
 
     def get_closest_furniture_to_2dbox(self, query_label, query_size):
+        if not self.objects:
+            raise ValueError("The dataset has no 3D models loaded. Please check if your 3D-FUTURE-model directory path is correct and accessible.")
         objects = self._filter_objects_by_label(query_label)
         if not objects:
             objects = self.objects
@@ -51,6 +55,8 @@ class ThreedFutureDataset(object):
         return sorted_mses[0]
 
     def get_closest_furniture_to_objfeats(self, query_label, query_objfeat):
+        if not self.objects:
+            raise ValueError("The dataset has no 3D models loaded. Please check if your 3D-FUTURE-model directory path is correct and accessible.")
         objects = self._filter_objects_by_label(query_label)
         if not objects:
             objects = self.objects
@@ -65,6 +71,8 @@ class ThreedFutureDataset(object):
         return sorted_mses[0]
 
     def get_closest_furniture_to_objfeats_and_size(self, query_label, query_objfeat, query_size):
+        if not self.objects:
+            raise ValueError("The dataset has no 3D models loaded. Please check if your 3D-FUTURE-model directory path is correct and accessible.")
         objects = self._filter_objects_by_label(query_label)
         if not objects:
             objects = self.objects
