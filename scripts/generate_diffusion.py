@@ -311,14 +311,19 @@ def main(argv):
     classes = np.array(dataset.class_labels)
     print('class labels:', classes, len(classes))
     
-    # Initialize dictionary for JSON export
-    export_data = {
-        "scene_ids": [],
-        "class_labels": [],
-        "translations": [],
-        "sizes": [],
-        "angles": []
-    }
+    # Initialize or load dictionary for JSON export
+    json_path = os.path.join(args.output_directory, "collision_params.json")
+    if os.path.exists(json_path):
+        with open(json_path, 'r', encoding='utf-8') as f:
+            export_data = json.load(f)
+    else:
+        export_data = {
+            "scene_ids": [],
+            "class_labels": [],
+            "translations": [],
+            "sizes": [],
+            "angles": []
+        }
     
     for i in range(args.start_index, args.start_index + args.n_sequences):
         if args.fix_order:
