@@ -244,8 +244,7 @@ def main(argv):
 
     for obj in objects_dataset.objects:
         if obj.model_jid in available_jids:
-            if os.path.exists(obj.raw_model_norm_pc_lat32_path):
-                existing_objects.append(obj)
+            existing_objects.append(obj)
             
     objects_dataset.objects = existing_objects
     print("Loaded {} 3D-FUTURE models".format(len(objects_dataset.objects)))

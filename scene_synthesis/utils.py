@@ -24,6 +24,10 @@ def get_textured_objects(bbox_params_t, objects_dataset, classes, diffusion=Fals
     for j in range(start, end):
         query_size = bbox_params_t[0, j, -4:-1]
         query_label = classes[bbox_params_t[0, j, :-7].argmax(-1)]
+        
+        if query_label in ["start", "end", "empty"]:
+            continue
+            
         furniture = objects_dataset.get_closest_furniture_to_box(
             query_label, query_size
         )
@@ -97,6 +101,10 @@ def get_textured_objects_based_on_objfeats(bbox_params_t, objects_dataset, class
     for j in range(start, end):
         query_size = bbox_params_t[0, j, -4:-1]
         query_label = classes[bbox_params_t[0, j, :-7].argmax(-1)]
+        
+        if query_label in ["start", "end", "empty"]:
+            continue
+
         if combine_size:
             furniture = objects_dataset.get_closest_furniture_to_objfeats_and_size(
                 query_label, query_objfeats[0, j], query_size
