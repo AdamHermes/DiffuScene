@@ -63,10 +63,18 @@ class ThreedFutureDataset(object):
 
         mses = {}
         for i, oi in enumerate(objects):
-            if query_objfeat.shape[0] == 32:
-                mses[oi] = np.sum((oi.raw_model_norm_pc_lat32() - query_objfeat)**2, axis=-1)
-            else:
-                mses[oi] = np.sum((oi.raw_model_norm_pc_lat() - query_objfeat)**2, axis=-1)
+            try:
+                if query_objfeat.shape[0] == 32:
+                    mses[oi] = np.sum((oi.raw_model_norm_pc_lat32() - query_objfeat)**2, axis=-1)
+                else:
+                    mses[oi] = np.sum((oi.raw_model_norm_pc_lat() - query_objfeat)**2, axis=-1)
+            except FileNotFoundError:
+                if not hasattr(self, '_missing_logged'):
+                    self._missing_logged = set()
+                if oi.model_jid not in self._missing_logged:
+                    print(f"WARNING: Missing latent file for {oi.model_jid}, skipping...")
+                    self._missing_logged.add(oi.model_jid)
+                continue
         sorted_mses = [k for k, v in sorted(mses.items(), key=lambda x:x[1])]
         return sorted_mses[0]
 
@@ -81,12 +89,20 @@ class ThreedFutureDataset(object):
         mses_feat = []
         mses_size = []
         for i, oi in enumerate(objects):
-            if query_objfeat.shape[0] == 32:
-                mses_feat.append( np.sum((oi.raw_model_norm_pc_lat32() - query_objfeat)**2, axis=-1) )
-            else:
-                mses_feat.append( np.sum((oi.raw_model_norm_pc_lat() - query_objfeat)**2, axis=-1) )
-            mses_size.append( np.sum((oi.size - query_size)**2, axis=-1) )
-            objs.append(oi)
+            try:
+                if query_objfeat.shape[0] == 32:
+                    mses_feat.append( np.sum((oi.raw_model_norm_pc_lat32() - query_objfeat)**2, axis=-1) )
+                else:
+                    mses_feat.append( np.sum((oi.raw_model_norm_pc_lat() - query_objfeat)**2, axis=-1) )
+                mses_size.append( np.sum((oi.size - query_size)**2, axis=-1) )
+                objs.append(oi)
+            except FileNotFoundError:
+                if not hasattr(self, '_missing_logged'):
+                    self._missing_logged = set()
+                if oi.model_jid not in self._missing_logged:
+                    print(f"WARNING: Missing latent file for {oi.model_jid}, skipping...")
+                    self._missing_logged.add(oi.model_jid)
+                continue
 
         ind = np.lexsort( (mses_feat, mses_size) )
         return objs[ ind[0] ]
