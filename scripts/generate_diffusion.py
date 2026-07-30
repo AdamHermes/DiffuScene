@@ -80,6 +80,12 @@ def main(argv):
         help="The number of sequences to be generated"
     )
     parser.add_argument(
+        "--start_index",
+        default=0,
+        type=int,
+        help="The starting index for sequences"
+    )
+    parser.add_argument(
         "--background",
         type=lambda x: list(map(float, x.split(","))),
         default="1,1,1,1",
@@ -314,7 +320,7 @@ def main(argv):
         "angles": []
     }
     
-    for i in range(args.n_sequences):
+    for i in range(args.start_index, args.start_index + args.n_sequences):
         if args.fix_order:
             if i < len(dataset):
                 scene_idx = given_scene_id or i
@@ -326,7 +332,7 @@ def main(argv):
         current_scene = raw_dataset[scene_idx]
         samples = dataset[scene_idx]
         print("{} / {}: Using the {} floor plan of scene {}".format(
-            i, args.n_sequences, scene_idx, current_scene.scene_id)
+            i - args.start_index, args.n_sequences, scene_idx, current_scene.scene_id)
         )
         # Get a floor plan
         floor_plan, tr_floor, room_mask = floor_plan_from_scene(
