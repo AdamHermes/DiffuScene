@@ -523,11 +523,11 @@ def main(argv):
             print('text description {}'.format( samples['description']) )
             open(path_to_texts, 'w').write( ''.join(samples['description']) )
 
-    # Save export_data to JSON at the end
-    json_path = os.path.join(args.output_directory, "collision_params.json")
-    with open(json_path, 'w', encoding='utf-8') as f:
-        json.dump(export_data, f, indent=2)
-    print(f"Saved collision parameters to {json_path}")
+        # Save export_data to JSON at the end of each scene generation
+        json_path = os.path.join(args.output_directory, "collision_params.json")
+        with open(json_path, 'w', encoding='utf-8') as f:
+            json.dump(export_data, f, indent=2)
+        # print(f"Saved collision parameters to {json_path}") # Optional: comment out so it doesn't spam too much
 
 
 if __name__ == "__main__":
