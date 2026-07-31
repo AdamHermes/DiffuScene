@@ -83,7 +83,7 @@ def main(argv):
         ))
 
     print("Generating temporary a folder with test_real images...")
-    path_to_test_real = "/cluster/balrog/jtang/ATISS_exps/test_real/" # /tmp/test_real
+    path_to_test_real = "./test_real/"
     if not os.path.exists(path_to_test_real):
         os.makedirs(path_to_test_real)
     for i, di in enumerate(test_real):
@@ -93,7 +93,7 @@ def main(argv):
     print('number of synthesized images :', len(test_real))
 
     print("Generating temporary a folder with test_fake images...")
-    path_to_test_fake = "/cluster/balrog/jtang/ATISS_exps/test_fake/" #/tmp/test_fake/
+    path_to_test_fake = "./test_fake/"
     if not os.path.exists(path_to_test_fake):
         os.makedirs(path_to_test_fake)
 
@@ -114,8 +114,9 @@ def main(argv):
     print('fid score:', fid_score)
     kid_score = fid.compute_kid(path_to_test_real, path_to_test_fake, device=torch.device("cpu"))
     print('kid score:', kid_score)
-    os.system('rm -r %s'%path_to_test_real)
-    os.system('rm -r %s'%path_to_test_fake)
+    import shutil
+    shutil.rmtree(path_to_test_real)
+    shutil.rmtree(path_to_test_fake)
 
 
 if __name__ == "__main__":

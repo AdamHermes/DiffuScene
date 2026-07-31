@@ -34,7 +34,17 @@ class ThreedFutureDataset(object):
 
         mses = {}
         for i, oi in enumerate(objects):
-            mses[oi] = np.sum((oi.size - query_size)**2, axis=-1)
+            try:
+                mses[oi] = np.sum((oi.size - query_size)**2, axis=-1)
+            except Exception as e:
+                if not hasattr(self, '_missing_logged'):
+                    self._missing_logged = set()
+                if oi.model_jid not in self._missing_logged:
+                    print(f"WARNING: Missing or broken file for {oi.model_jid} ({str(e)}), skipping...")
+                    self._missing_logged.add(oi.model_jid)
+                continue
+        if not mses:
+            raise RuntimeError(f"No valid models found for category {query_label}")
         sorted_mses = [k for k, v in sorted(mses.items(), key=lambda x:x[1])]
         return sorted_mses[0]
 
@@ -47,10 +57,20 @@ class ThreedFutureDataset(object):
 
         mses = {}
         for i, oi in enumerate(objects):
-            mses[oi] = (
-                (oi.size[0] - query_size[0])**2 +
-                (oi.size[2] - query_size[1])**2
-            )
+            try:
+                mses[oi] = (
+                    (oi.size[0] - query_size[0])**2 +
+                    (oi.size[2] - query_size[1])**2
+                )
+            except Exception as e:
+                if not hasattr(self, '_missing_logged'):
+                    self._missing_logged = set()
+                if oi.model_jid not in self._missing_logged:
+                    print(f"WARNING: Missing or broken file for {oi.model_jid} ({str(e)}), skipping...")
+                    self._missing_logged.add(oi.model_jid)
+                continue
+        if not mses:
+            raise RuntimeError(f"No valid models found for category {query_label}")
         sorted_mses = [k for k, v in sorted(mses.items(), key=lambda x: x[1])]
         return sorted_mses[0]
 
@@ -68,13 +88,15 @@ class ThreedFutureDataset(object):
                     mses[oi] = np.sum((oi.raw_model_norm_pc_lat32() - query_objfeat)**2, axis=-1)
                 else:
                     mses[oi] = np.sum((oi.raw_model_norm_pc_lat() - query_objfeat)**2, axis=-1)
-            except FileNotFoundError:
+            except Exception as e:
                 if not hasattr(self, '_missing_logged'):
                     self._missing_logged = set()
                 if oi.model_jid not in self._missing_logged:
-                    print(f"WARNING: Missing latent file for {oi.model_jid}, skipping...")
+                    print(f"WARNING: Missing or broken file for {oi.model_jid} ({str(e)}), skipping...")
                     self._missing_logged.add(oi.model_jid)
                 continue
+        if not mses:
+            raise RuntimeError(f"No valid models found for category {query_label}")
         sorted_mses = [k for k, v in sorted(mses.items(), key=lambda x:x[1])]
         return sorted_mses[0]
 
@@ -96,14 +118,16 @@ class ThreedFutureDataset(object):
                     mses_feat.append( np.sum((oi.raw_model_norm_pc_lat() - query_objfeat)**2, axis=-1) )
                 mses_size.append( np.sum((oi.size - query_size)**2, axis=-1) )
                 objs.append(oi)
-            except FileNotFoundError:
+            except Exception as e:
                 if not hasattr(self, '_missing_logged'):
                     self._missing_logged = set()
                 if oi.model_jid not in self._missing_logged:
-                    print(f"WARNING: Missing latent file for {oi.model_jid}, skipping...")
+                    print(f"WARNING: Missing or broken file for {oi.model_jid} ({str(e)}), skipping...")
                     self._missing_logged.add(oi.model_jid)
                 continue
 
+        if not objs:
+            raise RuntimeError(f"No valid models found for category {query_label}")
         ind = np.lexsort( (mses_feat, mses_size) )
         return objs[ ind[0] ]
 

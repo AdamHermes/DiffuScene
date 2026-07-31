@@ -278,11 +278,7 @@ class ThreedFutureModel(BaseThreedFutureModel):
                 skip_texture=True
             )
         except:
-            import pdb
-            pdb.set_trace()
-            print("Loading model failed", flush=True)
-            print(self.raw_model_path, flush=True)
-            raise
+            raise RuntimeError(f"Loading model failed for {self.raw_model_path}")
 
     def raw_model_transformed(self, offset=[[0, 0, 0]]):
         model = self.raw_model()
