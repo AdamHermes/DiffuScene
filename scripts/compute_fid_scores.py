@@ -45,78 +45,131 @@ def main(argv):
     )
     parser.add_argument(
         "path_to_real_renderings",
-        help="Path to the folder containing the real renderings"
+        help="Path to the folder containing the real renderings (either flat folder of PNGs or structured dataset folder)"
     )
     parser.add_argument(
         "path_to_synthesized_renderings",
-        help="Path to the folder containing the synthesized"
+        help="Path to the folder containing the synthesized images"
     )
     parser.add_argument(
         "path_to_annotations",
-        help="Path to the folder containing the annotations"
+        nargs="?",
+        default=None,
+        help="Path to the folder/file containing the annotations (optional if real renderings is a flat folder of PNGs)"
     )
     parser.add_argument(
         "--compare_all",
         action="store_true",
         help="if compare all"
     )
+    parser.add_argument(
+        "--splits",
+        default=None,
+        help="Comma-separated splits to use for real images, e.g. 'test' or 'train,val' (default: train,val)"
+    )
+    parser.add_argument(
+        "--rendered_scene",
+        default=None,
+        help="Name of the rendered scene image file to compare (e.g. rendered_scene_notexture_256.png)"
+    )
 
     args = parser.parse_args(argv)
 
-    # Create Real datasets
-    config = dict(
-        train_stats="dataset_stats.txt",
-        room_layout_size="256,256"
-    )
-    splits_builder = CSVSplitsBuilder(args.path_to_annotations)
-    if args.compare_all:
-        test_real = ThreedFrontRenderDataset(CachedThreedFront(
-            args.path_to_real_renderings,
-            config=config,
-            scene_ids=splits_builder.get_splits(["train", "val", "test"])
-        ))
-    else:
-        test_real = ThreedFrontRenderDataset(CachedThreedFront(
-            args.path_to_real_renderings,
-            config=config,
-            scene_ids=splits_builder.get_splits(["train", "val"])
-        ))
-
-    print("Generating temporary a folder with test_real images...")
     path_to_test_real = "./test_real/"
-    if not os.path.exists(path_to_test_real):
-        os.makedirs(path_to_test_real)
-    for i, di in enumerate(test_real):
-        di.save("{}/{:05d}.png".format(path_to_test_real, i))
-    # Number of images to be copied
-    N = len(test_real)
-    print('number of synthesized images :', len(test_real))
-
-    print("Generating temporary a folder with test_fake images...")
     path_to_test_fake = "./test_fake/"
-    if not os.path.exists(path_to_test_fake):
-        os.makedirs(path_to_test_fake)
+    if os.path.exists(path_to_test_real):
+        shutil.rmtree(path_to_test_real)
+    os.makedirs(path_to_test_real, exist_ok=True)
 
-    synthesized_images = [
-        os.path.join(args.path_to_synthesized_renderings, oi)
-        for oi in os.listdir(args.path_to_synthesized_renderings)
-        if oi.endswith(".png")
-    ]
-    print('number of synthesized images :', len(synthesized_images))
+    if os.path.exists(path_to_test_fake):
+        shutil.rmtree(path_to_test_fake)
+    os.makedirs(path_to_test_fake, exist_ok=True)
 
-    scores = []
-    scores2 = []
-    for i, fi in enumerate(synthesized_images):
-        shutil.copyfile(fi, "{}/{:05d}.png".format(path_to_test_fake, i))
+    try:
+        # Check if path_to_real_renderings is a flat folder with PNG images
+        real_png_files = sorted([
+            f for f in os.listdir(args.path_to_real_renderings)
+            if f.endswith(".png")
+        ])
 
-    # Compute the FID score
-    fid_score = fid.compute_fid(path_to_test_real, path_to_test_fake, device=torch.device("cpu"))
-    print('fid score:', fid_score)
-    kid_score = fid.compute_kid(path_to_test_real, path_to_test_fake, device=torch.device("cpu"))
-    print('kid score:', kid_score)
-    import shutil
-    shutil.rmtree(path_to_test_real)
-    shutil.rmtree(path_to_test_fake)
+        if len(real_png_files) > 0:
+            print(f"Detected flat folder with {len(real_png_files)} PNG images in: {args.path_to_real_renderings}")
+            if args.path_to_annotations and (args.splits or not args.compare_all):
+                splits_builder = CSVSplitsBuilder(args.path_to_annotations)
+                chosen_splits = [s.strip() for s in args.splits.split(",")] if args.splits else ["train", "val"]
+                allowed_scene_ids = set(splits_builder.get_splits(chosen_splits))
+                selected_pngs = []
+                for f in real_png_files:
+                    base = f[:-4]
+                    scene_id = base.split("_")[1] if "_" in base else base
+                    if scene_id in allowed_scene_ids:
+                        selected_pngs.append(f)
+                if len(selected_pngs) > 0:
+                    real_png_files = selected_pngs
+                    print(f"Filtered to {len(real_png_files)} images matching splits: {chosen_splits}")
+                else:
+                    print(f"Note: None of filenames matched scene IDs in split {chosen_splits}. Using all {len(real_png_files)} images.")
+
+            for i, f in enumerate(real_png_files):
+                shutil.copyfile(
+                    os.path.join(args.path_to_real_renderings, f),
+                    f"{path_to_test_real}/{i:05d}.png"
+                )
+            print('number of real images :', len(real_png_files))
+        else:
+            # Structured 3D-FRONT dataset folder
+            config = dict(
+                train_stats="dataset_stats.txt",
+                room_layout_size="256,256"
+            )
+            if args.rendered_scene:
+                config["rendered_scene"] = args.rendered_scene
+
+            if not args.path_to_annotations:
+                raise ValueError("path_to_annotations is required when using a structured dataset folder.")
+
+            splits_builder = CSVSplitsBuilder(args.path_to_annotations)
+            if args.splits:
+                chosen_splits = [s.strip() for s in args.splits.split(",")]
+            elif args.compare_all:
+                chosen_splits = ["train", "val", "test"]
+            else:
+                chosen_splits = ["train", "val"]
+
+            print("Using splits for real images:", chosen_splits)
+            test_real = ThreedFrontRenderDataset(CachedThreedFront(
+                args.path_to_real_renderings,
+                config=config,
+                scene_ids=splits_builder.get_splits(chosen_splits)
+            ))
+
+            for i, di in enumerate(test_real):
+                di.save("{}/{:05d}.png".format(path_to_test_real, i))
+            print('number of real images :', len(test_real))
+
+        print("Generating temporary a folder with test_fake images...")
+        synthesized_images = sorted([
+            os.path.join(args.path_to_synthesized_renderings, oi)
+            for oi in os.listdir(args.path_to_synthesized_renderings)
+            if oi.endswith(".png")
+        ])
+        print('number of synthesized images :', len(synthesized_images))
+
+        for i, fi in enumerate(synthesized_images):
+            shutil.copyfile(fi, "{}/{:05d}.png".format(path_to_test_fake, i))
+
+        # Compute the FID score
+        device = torch.device("cuda" if torch.cuda.is_available() else "cpu")
+        print("Computing metrics using device:", device)
+        fid_score = fid.compute_fid(path_to_test_real, path_to_test_fake, device=device)
+        print('fid score:', fid_score)
+        kid_score = fid.compute_kid(path_to_test_real, path_to_test_fake, device=device)
+        print('kid score:', kid_score)
+    finally:
+        if os.path.exists(path_to_test_real):
+            shutil.rmtree(path_to_test_real)
+        if os.path.exists(path_to_test_fake):
+            shutil.rmtree(path_to_test_fake)
 
 
 if __name__ == "__main__":

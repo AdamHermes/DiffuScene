@@ -44,3 +44,138 @@ pip install \
 
 cd ChamferDistancePytorch/chamfer3D
 python setup.py install
+
+
+
+
+python evaluate_diffuscene.py \
+    --object-mesh-root "../DiffuScene/models/pretrained_diffusion/diningrooms_uncond/gen_top2down_notexture_nofloor/scene_mesh" \
+    --scene-json "./collision_params_resolved.json" \
+    --transform-source json \
+    --size-scale 2.0 \
+    --method mesh \
+    --backend kaolin \
+    --device cuda \
+    --debug-sanity \
+    --max-scenes 10000 \
+    --summary-json ./collision_summary_diningroom_new.json
+
+#Method mesh
+[bedroom] overlap object: 0.2672 cnt 225/842
+[bedroom] overlap scene rate: 0.4691
+[bedroom] ColObj: 0.2672
+[bedroom] ColScene: 0.4691
+
+#Method bbox_no_direction
+[bedroom] overlap object: 0.0321 cnt 27/842
+[bedroom] overlap scene rate: 0.0802
+[bedroom] ColObj: 0.0321
+[bedroom] ColScene: 0.0802
+
+#Method mesh
+[livingroom] overlap object: 0.3023 cnt 696/2302
+[livingroom] overlap scene rate: 0.7969
+[livingroom] ColObj: 0.3023
+[livingroom] ColScene: 0.7969
+
+#Method bbox_no_direction
+[livingroom] overlap object: 0.0508 cnt 117/2302
+[livingroom] overlap scene rate: 0.2448
+[livingroom] ColObj: 0.0508
+[livingroom] ColScene: 0.2448
+
+
+#Method mesh
+[diningroom] overlap object: 0.3143 cnt 599/1906
+[diningroom] overlap scene rate: 0.7514
+[diningroom] ColObj: 0.3143
+[diningroom] ColScene: 0.7514
+
+#Method bbox_no_direction
+[diningroom] overlap object: 0.0666 cnt 127/1906
+[diningroom] overlap scene rate: 0.2825
+[diningroom] ColObj: 0.0666
+[diningroom] ColScene: 0.2825
+
+
+FID  : 100%|█████████████████████████████████████████| 6/6 [00:21<00:00,  3.61s/it]
+Found 162 images in the folder ./test_fake/
+FID  : 100%|█████████████████████████████████████████| 6/6 [00:21<00:00,  3.58s/it]
+fid score: 144.33633602216347
+compute KID between two folders
+Found 162 images in the folder ./test_real/
+KID  : 100%|█████████████████████████████████████████| 6/6 [00:21<00:00,  3.58s/it]
+Found 162 images in the folder ./test_fake/
+KID  : 100%|█████████████████████████████████████████| 6/6 [00:21<00:00,  3.58s/it]
+kid score: 0.06501755760308064
+(diffuscene) bach66@xgpf10:~/Di
+
+
+FID  : 100%|█████████████████████████████████████████| 6/6 [00:21<00:00,  3.63s/it]
+Found 192 images in the folder ./test_fake/
+FID  : 100%|█████████████████████████████████████████| 6/6 [00:03<00:00,  1.93it/s]
+fid score: 138.02687163916934
+compute KID between two folders
+Found 192 images in the folder ./test_real/
+KID  : 100%|█████████████████████████████████████████| 6/6 [00:21<00:00,  3.59s/it]
+Found 192 images in the folder ./test_fake/
+KID  : 100%|█████████████████████████████████████████| 6/6 [00:03<00:00,  2.00it/s]
+kid score: 0.08029253767145587
+(diffuscene) bach66@xgpf10:~/Dif
+
+
+
+FID  : 100%|█████████████████████████████████████████| 6/6 [00:21<00:00,  3.63s/it]
+Found 177 images in the folder ./test_fake/
+FID  : 100%|█████████████████████████████████████████| 6/6 [00:21<00:00,  3.59s/it]
+fid score: 144.48514044197492
+compute KID between two folders
+Found 177 images in the folder ./test_real/
+KID  : 100%|█████████████████████████████████████████| 6/6 [00:21<00:00,  3.57s/it]
+Found 177 images in the folder ./test_fake/
+KID  : 100%|█████████████████████████████████████████| 6/6 [00:21<00:00,  3.53s/it]
+kid score: 0.07052882381521351
+
+
+
+models/pretrained_diffusion/bedrooms_uncond
+
+
+
+Bedroom:
+FID: 79.8453
+KID: 0.0023
+Bedroom resolved:
+FID: 84.5785
+KID: 0.0064
+
+
+LivingRoom:
+FID: 93.4558
+KID: 0.0132
+LivingRoom Resolved:
+FID: 103.7228
+KID: 0.0230
+
+
+DiningRoom:
+FID: 96.9870
+KID: 0.0117
+DiningRoom Resolved
+FID: 108.8190
+KID: 0.0224
+
+
+
+[bedroom] overlap object: 0.0214 cnt 18/842
+[bedroom] overlap scene rate: 0.0432
+[bedroom] ColObj: 0.0214
+[bedroom] ColScene: 0.0432
+[livingroom] overlap object: 0.0621 cnt 143/2302
+[livingroom] overlap scene rate: 0.1354
+[livingroom] ColObj: 0.0621
+[livingroom] ColScene: 0.1354
+[diningroom] overlap object: 0.1018 cnt 194/1906
+[diningroom] overlap scene rate: 0.2034
+[diningroom] ColObj: 0.1018
+[diningroom] ColScene: 0.2034

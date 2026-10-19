@@ -74,6 +74,14 @@ def main(argv):
         help="Path to a pretrained model"
     )
     parser.add_argument(
+        "--guidance_config", default=None,
+        help="Optional physical guidance YAML overriding network.inference_guidance"
+    )
+    parser.add_argument(
+        "--seed", default=None, type=int,
+        help="Seed NumPy/PyTorch for reproducible guidance weight comparisons"
+    )
+    parser.add_argument(
         "--n_sequences",
         default=10,
         type=int,
@@ -203,6 +211,13 @@ def main(argv):
         os.makedirs(args.output_directory)
 
     config = load_config(args.config_file)
+    if args.guidance_config is not None:
+        config["network"]["inference_guidance"] = load_config(args.guidance_config)
+    if args.seed is not None:
+        np.random.seed(args.seed)
+        torch.manual_seed(args.seed)
+        if torch.cuda.is_available():
+            torch.cuda.manual_seed_all(args.seed)
 
     ########## make it for evaluation
     if 'text' in config["data"]["encoding_type"]:
@@ -229,8 +244,8 @@ def main(argv):
         args.path_to_pickled_3d_futute_models
     )
     
-    # Ghi đè lại đường dẫn (nếu file pickle đang trỏ sai nơi)
-    my_local_path = "/content/drive/MyDrive/DiffuScene/3D-FUTURE-model"                      
+    # Ghi đè lại đường dẫn tới thư mục chứa file obj/mtl thực tế trên cluster
+    my_local_path = "../datasets/3D-FUTURE-model"
     for obj in objects_dataset.objects:                                             
         obj.path_to_models = my_local_path 
     
@@ -318,7 +333,7 @@ def main(argv):
     print('class labels:', classes, len(classes))
     
     # Initialize or load dictionary for JSON export
-    json_path = os.path.join(args.output_directory, "collision_params.json")
+    json_path = os.path.join(args.output_directory, f"collision_params_{args.start_index}.json")
     if os.path.exists(json_path):
         with open(json_path, 'r', encoding='utf-8') as f:
             export_data = json.load(f)
@@ -336,7 +351,11 @@ def main(argv):
             if i < len(dataset):
                 scene_idx = given_scene_id or i
             else:
-                scene_idx = given_scene_id or (i % len(dataset))
+                if given_scene_id is None:
+                    print(f"Index {i} exceeds dataset size {len(dataset)}. Stopping generation for this job.")
+                    break
+                else:
+                    scene_idx = given_scene_id
         else:
             scene_idx = given_scene_id or np.random.choice(len(dataset))
             
@@ -350,6 +369,11 @@ def main(argv):
             current_scene, args.path_to_floor_plan_textures, no_texture=args.no_texture
         )
 
+        # Use the same floor-centered coordinates as the furniture translations.
+        floor_vertices, _ = current_scene.floor_plan
+        centered_floor = floor_vertices - current_scene.floor_plan_centroid
+        floor_xz = centered_floor[:, [0, 2]]
+        guidance_room_bounds = np.concatenate((floor_xz.min(0), floor_xz.max(0))).tolist()
 
         bbox_params = network.generate_layout(
                 room_mask=room_mask.to(device),
@@ -360,7 +384,22 @@ def main(argv):
                 device=device,
                 clip_denoised=args.clip_denoised,
                 batch_seeds=torch.arange(i, i+1),
+                room_bounds=guidance_room_bounds,
         )
+
+        guidance_config = config["network"].get("inference_guidance", {}) or {}
+        if guidance_config.get("enabled", False):
+            guidance_stats = network.diffusion.get_guidance_stats()
+            guidance_record = {
+                "scene_id": current_scene.scene_id, "scene_index": int(scene_idx),
+                "sequence_index": i, "seed": args.seed,
+                "room_bounds": guidance_room_bounds, "config": guidance_config,
+                "step_stats": guidance_stats,
+            }
+            log_path = os.path.join(args.output_directory, "guidance_losses_{}.jsonl".format(args.start_index))
+            with open(log_path, "a", encoding="utf-8") as handle:
+                handle.write(json.dumps(guidance_record) + "\n")
+            print("[Physical guidance] {} evaluated steps; log: {}".format(len(guidance_stats), log_path))
 
         boxes = dataset.post_process(bbox_params)
         bbox_params_t = torch.cat([
@@ -524,7 +563,7 @@ def main(argv):
             open(path_to_texts, 'w').write( ''.join(samples['description']) )
 
         # Save export_data to JSON at the end of each scene generation
-        json_path = os.path.join(args.output_directory, "collision_params.json")
+        json_path = os.path.join(args.output_directory, f"collision_params_{args.start_index}.json")
         with open(json_path, 'w', encoding='utf-8') as f:
             json.dump(export_data, f, indent=2)
         # print(f"Saved collision parameters to {json_path}") # Optional: comment out so it doesn't spam too much

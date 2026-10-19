@@ -227,7 +227,10 @@ class DiffusionSceneLayout_DDPM(Module):
 
     def sample(self, room_mask, num_points, point_dim, batch_size=1, text=None, 
                partial_boxes=None, input_boxes=None, ret_traj=False, ddim=False, clip_denoised=False, freq=40, batch_seeds=None, 
+               room_bounds=None,
                 ):
+        if ddim and self.diffusion.diffusion.physical_guidance is not None:
+            raise NotImplementedError("Physical guidance supports DDPM sampling; set ddim=False")
         device = room_mask.device
         noise = torch.randn((batch_size, num_points, point_dim))#, device=room_mask.device)
 
@@ -297,30 +300,30 @@ class DiffusionSceneLayout_DDPM(Module):
 
         elif partial_boxes is not None:
             print('scene completion sampling')
-            samples = self.diffusion.complete_samples(noise.shape, room_mask.device, condition=condition, condition_cross=condition_cross, clip_denoised=clip_denoised, partial_boxes=partial_boxes)
+            samples = self.diffusion.complete_samples(noise.shape, room_mask.device, condition=condition, condition_cross=condition_cross, clip_denoised=clip_denoised, partial_boxes=partial_boxes, room_bounds=room_bounds)
 
         else:
             print('unconditional / conditional generation sampling')
             # reverse sampling
             if ret_traj:
-                samples = self.diffusion.gen_sample_traj(noise.shape, room_mask.device, freq=freq, condition=condition, condition_cross=condition_cross, clip_denoised=clip_denoised)
+                samples = self.diffusion.gen_sample_traj(noise.shape, room_mask.device, freq=freq, condition=condition, condition_cross=condition_cross, clip_denoised=clip_denoised, room_bounds=room_bounds)
             else:
-                samples = self.diffusion.gen_samples(noise.shape, room_mask.device, condition=condition, condition_cross=condition_cross, clip_denoised=clip_denoised)
+                samples = self.diffusion.gen_samples(noise.shape, room_mask.device, condition=condition, condition_cross=condition_cross, clip_denoised=clip_denoised, room_bounds=room_bounds)
             
         return samples
 
     @torch.no_grad()
-    def generate_layout(self, room_mask, num_points, point_dim, batch_size=1, text=None, ret_traj=False, ddim=False, clip_denoised=False, batch_seeds=None, device="cpu", keep_empty=False):
+    def generate_layout(self, room_mask, num_points, point_dim, batch_size=1, text=None, ret_traj=False, ddim=False, clip_denoised=False, batch_seeds=None, device="cpu", keep_empty=False, room_bounds=None):
         
-        samples = self.sample(room_mask, num_points, point_dim, batch_size, text=text, ret_traj=ret_traj, ddim=ddim, clip_denoised=clip_denoised, batch_seeds=batch_seeds)
+        samples = self.sample(room_mask, num_points, point_dim, batch_size, text=text, ret_traj=ret_traj, ddim=ddim, clip_denoised=clip_denoised, batch_seeds=batch_seeds, room_bounds=room_bounds)
         
         return self.delete_empty_from_network_samples(samples, device=device, keep_empty=keep_empty)
 
     @torch.no_grad()
-    def generate_layout_progressive(self, room_mask, num_points, point_dim, batch_size=1, text=None, ret_traj=False, ddim=False, clip_denoised=False, batch_seeds=None, device="cpu", keep_empty=False, num_step=100):
+    def generate_layout_progressive(self, room_mask, num_points, point_dim, batch_size=1, text=None, ret_traj=False, ddim=False, clip_denoised=False, batch_seeds=None, device="cpu", keep_empty=False, num_step=100, room_bounds=None):
         
         # output dictionary of sample trajectory & sample some key steps
-        samples_traj = self.sample(room_mask, num_points, point_dim, batch_size, text=text, ret_traj=ret_traj, ddim=ddim, clip_denoised=clip_denoised, batch_seeds=batch_seeds, freq=num_step)
+        samples_traj = self.sample(room_mask, num_points, point_dim, batch_size, text=text, ret_traj=ret_traj, ddim=ddim, clip_denoised=clip_denoised, batch_seeds=batch_seeds, freq=num_step, room_bounds=room_bounds)
         boxes_traj = {}
 
         # delete the initial noisy
@@ -333,9 +336,9 @@ class DiffusionSceneLayout_DDPM(Module):
         return boxes_traj
     
     @torch.no_grad()
-    def complete_scene(self, room_mask, num_points, point_dim, partial_boxes, batch_size=1, ret_traj=False, ddim=False, clip_denoised=False, batch_seeds=None, device="cpu", keep_empty=False):
+    def complete_scene(self, room_mask, num_points, point_dim, partial_boxes, batch_size=1, ret_traj=False, ddim=False, clip_denoised=False, batch_seeds=None, device="cpu", keep_empty=False, room_bounds=None):
         
-        samples = self.sample(room_mask, num_points, point_dim, batch_size, partial_boxes=partial_boxes, ret_traj=ret_traj, ddim=ddim, clip_denoised=clip_denoised, batch_seeds=batch_seeds)
+        samples = self.sample(room_mask, num_points, point_dim, batch_size, partial_boxes=partial_boxes, ret_traj=ret_traj, ddim=ddim, clip_denoised=clip_denoised, batch_seeds=batch_seeds, room_bounds=room_bounds)
 
         return self.delete_empty_from_network_samples(samples, device=device, keep_empty=keep_empty)
     

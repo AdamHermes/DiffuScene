@@ -1,0 +1,234 @@
+{
+  "rooms": {
+    "bedroom": {
+      "n_scenes": 162,
+      "penetration_depth": {
+        "n_scenes": 162,
+        "n_scenes_with_collisions": 14,
+        "total_penetration_depth_mean": 0.022108939829023455,
+        "total_penetration_depth_std": 0.10546404994882534,
+        "mean_penetration_depth_per_collision": 0.2387765501534533,
+        "std_penetration_depth_per_collision": 0.2566245303392136,
+        "max_penetration_depth_mean": 0.021411082749415992,
+        "max_penetration_depth_std": 0.10411320191438875,
+        "max_penetration_depth_global": 0.9144265284632851,
+        "penetration_depth_pct_mean": 0.5146093602756209,
+        "penetration_depth_pct_std": 0.46200664458376917,
+        "total_colliding_pairs": 15
+      },
+      "collision_rates_before": {
+        "n_scenes": 162,
+        "ColScene": 0.08641975308641975,
+        "ColObj": 0.014792899408284023,
+        "collided_scenes": 14,
+        "total_pairs": 1014,
+        "collided_pairs": 15
+      },
+      "collision_rates_after": {
+        "n_scenes": 162,
+        "ColScene": 0.0,
+        "ColObj": 0.0,
+        "collided_scenes": 0,
+        "total_pairs": 1014,
+        "collided_pairs": 0
+      },
+      "convergence": {
+        "n_scenes": 162,
+        "mean_iterations": 1.6975308641975309,
+        "median_iterations": 2.0,
+        "min_iterations": 1,
+        "max_iterations": 5,
+        "std_iterations": 0.6581821783606715,
+        "convergence_failure_count": 0,
+        "convergence_failure_rate": 0.0,
+        "iteration_histogram": {
+          "1": 61,
+          "2-5": 101,
+          "6-10": 0,
+          "11-50": 0,
+          "51-100": 0,
+          "101-499": 0,
+          "500": 0
+        }
+      },
+      "displacement": {
+        "n_scenes": 162,
+        "total_objects": 842,
+        "total_objects_moved": 565,
+        "pct_objects_moved": 0.671021377672209,
+        "mean_displacement_m": 0.3373658134300359,
+        "std_displacement_m": 0.28736110926982866,
+        "max_displacement_m": 1.9447731188325228,
+        "mean_displacement_relative": 0.776388144010453,
+        "std_displacement_relative": 0.8357871155646337,
+        "per_scene_pct_moved_mean": 0.6390057987280209,
+        "per_scene_mean_displacement_mean": 0.271620705701722
+      },
+      "resolution_success": {
+        "n_scenes": 162,
+        "resolution_success_count": 162,
+        "resolution_success_rate": 1.0,
+        "solver_converged_count": 162
+      }
+    },
+    "diningroom": {
+      "n_scenes": 177,
+      "penetration_depth": {
+        "n_scenes": 177,
+        "n_scenes_with_collisions": 51,
+        "total_penetration_depth_mean": 0.08717251979663726,
+        "total_penetration_depth_std": 0.21507321355179623,
+        "mean_penetration_depth_per_collision": 0.22042194291435427,
+        "std_penetration_depth_per_collision": 0.2096125329907379,
+        "max_penetration_depth_mean": 0.07176390915294567,
+        "max_penetration_depth_std": 0.16577318211641645,
+        "max_penetration_depth_global": 1.1336179792600811,
+        "penetration_depth_pct_mean": 0.5376009878852048,
+        "penetration_depth_pct_std": 0.44793799855749333,
+        "total_colliding_pairs": 70
+      },
+      "collision_rates_before": {
+        "n_scenes": 177,
+        "ColScene": 0.288135593220339,
+        "ColObj": 0.00933457794372583,
+        "collided_scenes": 51,
+        "total_pairs": 7499,
+        "collided_pairs": 70
+      },
+      "collision_rates_after": {
+        "n_scenes": 177,
+        "ColScene": 0.05649717514124294,
+        "ColObj": 0.0022669689291905585,
+        "collided_scenes": 10,
+        "total_pairs": 7499,
+        "collided_pairs": 17
+      },
+      "convergence": {
+        "n_scenes": 177,
+        "mean_iterations": 18.548022598870055,
+        "median_iterations": 2.0,
+        "min_iterations": 1,
+        "max_iterations": 500,
+        "std_iterations": 82.30101295475058,
+        "convergence_failure_count": 5,
+        "convergence_failure_rate": 0.02824858757062147,
+        "iteration_histogram": {
+          "1": 49,
+          "2-5": 86,
+          "6-10": 21,
+          "11-50": 16,
+          "51-100": 0,
+          "101-499": 0,
+          "500": 5
+        }
+      },
+      "displacement": {
+        "n_scenes": 177,
+        "total_objects": 1906,
+        "total_objects_moved": 1527,
+        "pct_objects_moved": 0.8011542497376705,
+        "mean_displacement_m": 0.8111824674133192,
+        "std_displacement_m": 0.8018580577409684,
+        "max_displacement_m": 5.5022016601214245,
+        "mean_displacement_relative": 2.015376889208028,
+        "std_displacement_relative": 2.5634133966328374,
+        "per_scene_pct_moved_mean": 0.7766660457069493,
+        "per_scene_mean_displacement_mean": 0.6539189388247844
+      },
+      "resolution_success": {
+        "n_scenes": 177,
+        "resolution_success_count": 167,
+        "resolution_success_rate": 0.943502824858757,
+        "solver_converged_count": 172
+      }
+    },
+    "livingroom": {
+      "n_scenes": 192,
+      "penetration_depth": {
+        "n_scenes": 192,
+        "n_scenes_with_collisions": 49,
+        "total_penetration_depth_mean": 0.07055441052707938,
+        "total_penetration_depth_std": 0.19924721791642525,
+        "mean_penetration_depth_per_collision": 0.20840687417229606,
+        "std_penetration_depth_per_collision": 0.21528626120196398,
+        "max_penetration_depth_mean": 0.05708740151351227,
+        "max_penetration_depth_std": 0.15312403227964463,
+        "max_penetration_depth_global": 1.5129168964478605,
+        "penetration_depth_pct_mean": 0.5240512360737765,
+        "penetration_depth_pct_std": 0.4446352829644388,
+        "total_colliding_pairs": 65
+      },
+      "collision_rates_before": {
+        "n_scenes": 192,
+        "ColScene": 0.2552083333333333,
+        "ColObj": 0.006604348709611868,
+        "collided_scenes": 49,
+        "total_pairs": 9842,
+        "collided_pairs": 65
+      },
+      "collision_rates_after": {
+        "n_scenes": 192,
+        "ColScene": 0.020833333333333332,
+        "ColObj": 0.000406421459053038,
+        "collided_scenes": 4,
+        "total_pairs": 9842,
+        "collided_pairs": 4
+      },
+      "convergence": {
+        "n_scenes": 192,
+        "mean_iterations": 6.494791666666667,
+        "median_iterations": 2.0,
+        "min_iterations": 1,
+        "max_iterations": 500,
+        "std_iterations": 36.00477361230402,
+        "convergence_failure_count": 1,
+        "convergence_failure_rate": 0.005208333333333333,
+        "iteration_histogram": {
+          "1": 52,
+          "2-5": 92,
+          "6-10": 34,
+          "11-50": 13,
+          "51-100": 0,
+          "101-499": 0,
+          "500": 1
+        }
+      },
+      "displacement": {
+        "n_scenes": 192,
+        "total_objects": 2302,
+        "total_objects_moved": 1736,
+        "pct_objects_moved": 0.7541268462206777,
+        "mean_displacement_m": 0.7368518371489621,
+        "std_displacement_m": 0.723333390044738,
+        "max_displacement_m": 4.304996999565804,
+        "mean_displacement_relative": 1.6969943161459815,
+        "std_displacement_relative": 1.8896482646007304,
+        "per_scene_pct_moved_mean": 0.7225621348250991,
+        "per_scene_mean_displacement_mean": 0.5889484269136672
+      },
+      "resolution_success": {
+        "n_scenes": 192,
+        "resolution_success_count": 188,
+        "resolution_success_rate": 0.9791666666666666,
+        "solver_converged_count": 191
+      }
+    }
+  },
+  "stress_test": {
+    "n_scenes": 50,
+    "n_objects_per_scene": 20,
+    "room_half_extent": 2.5,
+    "mean_collisions_before": 48.34,
+    "mean_collisions_after": 0.0,
+    "mean_iterations": 14.12,
+    "median_iterations": 14.0,
+    "max_iterations": 19,
+    "std_iterations": 2.574024086911387,
+    "convergence_failure_count": 0,
+    "convergence_failure_rate": 0.0
+  },
+  "params": {
+    "max_iter": 500,
+    "push_eps": 0.02
+  }
+}

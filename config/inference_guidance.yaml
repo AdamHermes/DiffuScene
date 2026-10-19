@@ -1,0 +1,34 @@
+# Pass with --guidance_config config/inference_guidance.yaml to generate_diffusion.py.
+# Alternatively put this mapping under network.inference_guidance in the model YAML.
+enabled: true
+strength: 20.0
+start_ratio: 0.95       # Start after 95% of reverse diffusion has completed.
+interval: 5
+grad_clip: 10.1        # Per-object L2 norm; 0 disables clipping.
+
+# generate_diffusion.py supplies each floor plan's actual X/Z bounding rectangle.
+# For custom API callers, pass room_bounds=[xmin,zmin,xmax,zmax] or set it here.
+# room_bounds: [-3.0, -3.0, 3.0, 3.0]
+
+constraints:
+  collision:
+    enabled: true
+    weight: 10.0
+    iou_weight: 0.5
+    penetration_weight: 2.0
+    iou_threshold: 0.02
+    penetration_threshold: 0.0
+  room_boundary:
+    enabled: true
+    weight: 10.0
+  walkable:
+    enabled: true
+    weight: 1.0
+    type: center_penalty  # EchoScene full_mp default; alternative: edge_gaussian.
+    sigma: 0.5
+    # Options used only for type: edge_gaussian.
+    robot_hight_real: 1.5
+    sigma_scale: 0.5
+    heatmap_weight: 0.8
+    repulsion_weight: 0.2
+    grid_resolution: 64

@@ -125,7 +125,9 @@ def main(argv):
 
     if class_labels_all and class_labels_all[0]:
         n_classes = len(class_labels_all[0][0])
-        color_palette = np.array(sns.color_palette('hls', max(n_classes - 2, 1)))
+        # JSON has length 21 (start/end stripped). Use exactly 21 to match GT and generate_diffusion.py
+        num_colors = n_classes if n_classes == 21 else max(n_classes - 2, 1)
+        color_palette = np.array(sns.color_palette('hls', num_colors))
     else:
         color_palette = np.array(sns.color_palette('hls', 23))
 

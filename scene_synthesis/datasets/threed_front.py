@@ -290,18 +290,20 @@ class CachedThreedFront(ThreedFront):
             for pi in self._tags
         ])
 
-        rendered_scene = "rendered_scene_256.png"
-        path_to_rendered_scene = os.path.join(
-            self._base_dir, self._tags[0], rendered_scene
-        )
-        if not os.path.isfile(path_to_rendered_scene):
-            rendered_scene = "rendered_scene_256_no_lamps.png"
-        
-        path_to_rendered_scene = os.path.join(
-            self._base_dir, self._tags[0], rendered_scene
-        )
-        if not os.path.isfile(path_to_rendered_scene):
-            rendered_scene = "rendered_scene_notexture_256.png"
+        rendered_scene = self.config.get("rendered_scene", None)
+        if rendered_scene is None:
+            rendered_scene = "rendered_scene_256.png"
+            path_to_rendered_scene = os.path.join(
+                self._base_dir, self._tags[0], rendered_scene
+            )
+            if not os.path.isfile(path_to_rendered_scene):
+                rendered_scene = "rendered_scene_256_no_lamps.png"
+            
+            path_to_rendered_scene = os.path.join(
+                self._base_dir, self._tags[0], rendered_scene
+            )
+            if not os.path.isfile(path_to_rendered_scene):
+                rendered_scene = "rendered_scene_notexture_256.png"
         print('rendered_scene is :', rendered_scene)
 
         self._path_to_renders = sorted([

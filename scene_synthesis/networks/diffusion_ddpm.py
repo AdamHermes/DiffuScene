@@ -10,10 +10,10 @@ import torch.distributed as dist
 from tqdm.auto import tqdm
 import json
 import torch.nn.functional as F
-from einops import rearrange, reduce
 from functools import partial
 from collections import namedtuple
 from .loss import axis_aligned_bbox_overlaps_3d
+from .physical_guidance import PhysicalGuidance
 
 
 ModelPrediction =  namedtuple('ModelPrediction', ['pred_noise', 'pred_x_start'])
@@ -134,6 +134,13 @@ class GaussianDiffusion:
         self.objfeat_dim = config.get("objfeat_dim", 0)
         self.loss_separate = loss_separate
         self.loss_iou = loss_iou
+        guidance_config = config.get("inference_guidance", {}) or {}
+        self.physical_guidance = (
+            PhysicalGuidance(guidance_config, config, train_stats_file)
+            if guidance_config.get("enabled", False) else None
+        )
+        if self.physical_guidance is not None and config.get("room_arrange_condition", False):
+            raise ValueError("Physical guidance currently supports full-layout generation/completion, not arrangement")
         if self.loss_iou:
             with open(train_stats_file, "r") as f:
                 train_stats = json.load(f)
@@ -336,12 +343,22 @@ class GaussianDiffusion:
 
     ''' samples '''
 
-    def p_sample(self, denoise_fn, data, t, condition, condition_cross, noise_fn, clip_denoised=False, return_pred_xstart=False):
+    def p_sample(self, denoise_fn, data, t, condition, condition_cross, noise_fn, clip_denoised=False, return_pred_xstart=False, room_bounds=None):
         """
         Sample from the model
         """
-        model_mean, _, model_log_variance, pred_xstart = self.p_mean_variance(denoise_fn, data=data, t=t, condition=condition, condition_cross=condition_cross, clip_denoised=clip_denoised,
-                                                                 return_pred_xstart=True)
+        with torch.no_grad():
+            model_mean, model_variance, model_log_variance, pred_xstart = self.p_mean_variance(
+                denoise_fn, data=data, t=t, condition=condition, condition_cross=condition_cross,
+                clip_denoised=clip_denoised, return_pred_xstart=True)
+        if self.physical_guidance is not None:
+            if not torch.all(t == t[0]):
+                raise ValueError("Physical guidance sampling requires a shared timestep across the batch")
+            gradient = self.physical_guidance.gradient(
+                pred_xstart, int(t[0].item()), self.num_timesteps, room_bounds=room_bounds)
+            if gradient is not None:
+                strength = float(self.physical_guidance.config.get("strength", 20.0))
+                model_mean = model_mean - strength * model_variance * gradient
         noise = noise_fn(size=data.shape, dtype=data.dtype, device=data.device)
         assert noise.shape == data.shape
         # no noise when t == 0
@@ -353,7 +370,7 @@ class GaussianDiffusion:
 
 
     def p_sample_loop(self, denoise_fn, shape, device, condition, condition_cross,
-                      noise_fn=torch.randn, clip_denoised=True, keep_running=False):
+                      noise_fn=torch.randn, clip_denoised=True, keep_running=False, room_bounds=None):
         """
         Generate samples
         keep_running: True if we run 2 x num_timesteps, False if we just run num_timesteps
@@ -361,18 +378,20 @@ class GaussianDiffusion:
         """
 
         from tqdm import tqdm
+        if self.physical_guidance is not None:
+            self.physical_guidance.step_stats.clear()
         assert isinstance(shape, (tuple, list))
         img_t = noise_fn(size=shape, dtype=torch.float, device=device)
         for t in tqdm(reversed(range(0, self.num_timesteps if not keep_running else len(self.betas))), desc="Diffusion Steps"):
             t_ = torch.empty(shape[0], dtype=torch.int64, device=device).fill_(t)
             img_t = self.p_sample(denoise_fn=denoise_fn, data=img_t,t=t_, condition=condition, condition_cross=condition_cross, noise_fn=noise_fn,
-                                  clip_denoised=clip_denoised, return_pred_xstart=False)
+                                  clip_denoised=clip_denoised, return_pred_xstart=False, room_bounds=room_bounds)
 
         assert img_t.shape == shape
         return img_t
 
     def p_sample_loop_trajectory(self, denoise_fn, shape, device, freq, condition, condition_cross,
-                                 noise_fn=torch.randn,clip_denoised=True, keep_running=False):
+                                 noise_fn=torch.randn,clip_denoised=True, keep_running=False, room_bounds=None):
         """
         Generate samples, returning intermediate images
         Useful for visualizing how denoised images evolve over time
@@ -383,6 +402,8 @@ class GaussianDiffusion:
         assert isinstance(shape, (tuple, list))
 
         total_steps =  self.num_timesteps if not keep_running else len(self.betas)
+        if self.physical_guidance is not None:
+            self.physical_guidance.step_stats.clear()
 
         img_t = noise_fn(size=shape, dtype=torch.float, device=device)
         imgs = [img_t]
@@ -391,7 +412,7 @@ class GaussianDiffusion:
             t_ = torch.empty(shape[0], dtype=torch.int64, device=device).fill_(t)
             img_t = self.p_sample(denoise_fn=denoise_fn, data=img_t, t=t_, condition=condition, condition_cross=condition_cross, noise_fn=noise_fn,
                                   clip_denoised=clip_denoised,
-                                  return_pred_xstart=False)
+                                  return_pred_xstart=False, room_bounds=room_bounds)
             if t % freq == 0 or t == total_steps-1:
                 imgs.append(img_t)
 
@@ -401,6 +422,8 @@ class GaussianDiffusion:
     ## from https://github.com/lucidrains/denoising-diffusion-pytorch/blob/main/denoising_diffusion_pytorch/denoising_diffusion_pytorch.py
     @torch.no_grad()
     def ddim_sample_loop(self, denoise_fn, shape, device, condition, condition_cross, noise_fn=torch.randn, clip_denoised=True, sampling_timesteps=50, ddim_sampling_eta=0., return_all_timesteps = False):
+        if self.physical_guidance is not None:
+            raise NotImplementedError("Physical guidance is implemented for DDPM sampling; use gen_samples")
         self.ddim_sampling_eta = ddim_sampling_eta
         self.sampling_timesteps = sampling_timesteps
         batch, total_timesteps, sampling_timesteps, eta = shape[0], self.num_timesteps, self.sampling_timesteps, self.ddim_sampling_eta
@@ -446,13 +469,15 @@ class GaussianDiffusion:
     
 
     def p_sample_loop_complete(self, denoise_fn, shape, device, condition, condition_cross,
-                      noise_fn=torch.randn, clip_denoised=True, keep_running=False, partial_boxes=None):
+                      noise_fn=torch.randn, clip_denoised=True, keep_running=False, partial_boxes=None, room_bounds=None):
         """
         Complete samples based on partial samples
         keep_running: True if we run 2 x num_timesteps, False if we just run num_timesteps
 
         """
 
+        if self.physical_guidance is not None:
+            self.physical_guidance.step_stats.clear()
         assert isinstance(shape, (tuple, list))
         img_t = noise_fn(size=shape, dtype=torch.float, device=device)
         for t in reversed(range(0, self.num_timesteps if not keep_running else len(self.betas))):
@@ -468,7 +493,7 @@ class GaussianDiffusion:
 
             # reverse diffusion
             img_t = self.p_sample(denoise_fn=denoise_fn, data=img_t,t=t_, condition=condition, condition_cross=condition_cross, noise_fn=noise_fn,
-                                clip_denoised=clip_denoised, return_pred_xstart=False)
+                                clip_denoised=clip_denoised, return_pred_xstart=False, room_bounds=room_bounds)
             if t == 0:
                 print('last:', t, self.num_timesteps, len(self.betas))
                 img_t = torch.cat([ partial_boxes, img_t[:, num_partial:, :] ], dim=1).contiguous()
@@ -484,6 +509,8 @@ class GaussianDiffusion:
 
         """
 
+        if self.physical_guidance is not None:
+            raise NotImplementedError("Physical guidance does not support arrangement sampling")
         assert isinstance(shape, (tuple, list))
         img_t = noise_fn(size=(shape[0], shape[1], self.translation_dim+self.angle_dim), dtype=torch.float, device=device)
         for t in reversed(range(0, self.num_timesteps if not keep_running else len(self.betas))):
@@ -774,16 +801,20 @@ class DiffusionPoint(nn.Module):
     
 
     def gen_samples(self, shape, device, condition=None, condition_cross=None, noise_fn=torch.randn,
-                    clip_denoised=True, keep_running=False):
+                    clip_denoised=True, keep_running=False, room_bounds=None):
         return self.diffusion.p_sample_loop(self._denoise, shape=shape, device=device, condition=condition, condition_cross=condition_cross, noise_fn=noise_fn,
                                             clip_denoised=clip_denoised,
-                                            keep_running=keep_running)
+                                            keep_running=keep_running, room_bounds=room_bounds)
 
     def gen_sample_traj(self, shape, device, freq, condition=None, condition_cross=None, noise_fn=torch.randn,
-                    clip_denoised=True,keep_running=False):
+                    clip_denoised=True,keep_running=False, room_bounds=None):
         return self.diffusion.p_sample_loop_trajectory(self._denoise, shape=shape, device=device, condition=condition, condition_cross=condition_cross, noise_fn=noise_fn, freq=freq,
                                                        clip_denoised=clip_denoised,
-                                                       keep_running=keep_running)
+                                                       keep_running=keep_running, room_bounds=room_bounds)
+
+    def get_guidance_stats(self):
+        guidance = self.diffusion.physical_guidance
+        return list(guidance.step_stats) if guidance is not None else []
     
 
     def gen_samples_ddim(self, shape, device, condition=None, condition_cross=None, noise_fn=torch.randn,
@@ -792,10 +823,10 @@ class DiffusionPoint(nn.Module):
                                             clip_denoised=clip_denoised, sampling_timesteps=sampling_timesteps, ddim_sampling_eta=ddim_sampling_eta, return_all_timesteps=return_all_timesteps)
     
     def complete_samples(self, shape, device, condition=None, condition_cross=None, noise_fn=torch.randn,
-                    clip_denoised=True, keep_running=False, partial_boxes=None):
+                    clip_denoised=True, keep_running=False, partial_boxes=None, room_bounds=None):
         return self.diffusion.p_sample_loop_complete(self._denoise, shape=shape, device=device, condition=condition, condition_cross=condition_cross, noise_fn=noise_fn,
                                             clip_denoised=clip_denoised,
-                                            keep_running=keep_running, partial_boxes=partial_boxes)
+                                            keep_running=keep_running, partial_boxes=partial_boxes, room_bounds=room_bounds)
 
     def arrange_samples(self, shape, device, condition=None, condition_cross=None, noise_fn=torch.randn,
                     clip_denoised=True, keep_running=False, input_boxes=None):

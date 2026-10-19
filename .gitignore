@@ -7,3 +7,16 @@ pretrained
 UncondGen/
 DiffuScene_Results-20260728T141038Z-1-001.zip
 /DiffuScene_Results
+
+# Local reference repository and generated room outputs
+/echoscene/
+/bedroom/
+/diningroom/
+/livingroom/
+/bedroom_image*/
+/bedrooms_notexture_nofloor_whiteground/
+
+# Local datasets and downloaded/exported archives
+/3d_front_processed/
+/diffuscene_data/
+/*.zip
