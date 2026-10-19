@@ -25,6 +25,7 @@ from scene_synthesis.datasets.threed_future_dataset import ThreedFutureDataset
 from scene_synthesis.networks import build_network
 from scene_synthesis.utils import get_textured_objects, get_textured_objects_based_on_objfeats
 from scene_synthesis.stats_logger import AverageAggregator
+from scene_synthesis.serialization import json_default
 
 from simple_3dviz import Scene
 #from simple_3dviz.window import show
@@ -398,7 +399,7 @@ def main(argv):
             }
             log_path = os.path.join(args.output_directory, "guidance_losses_{}.jsonl".format(args.start_index))
             with open(log_path, "a", encoding="utf-8") as handle:
-                handle.write(json.dumps(guidance_record) + "\n")
+                handle.write(json.dumps(guidance_record, default=json_default) + "\n")
             print("[Physical guidance] {} evaluated steps; log: {}".format(len(guidance_stats), log_path))
 
         boxes = dataset.post_process(bbox_params)
