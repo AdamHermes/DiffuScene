@@ -3,7 +3,7 @@
 enabled: true
 strength: 20.0
 start_ratio: 0.95       # Start after 95% of reverse diffusion has completed.
-interval: 5
+interval: 1
 grad_clip: 10.1        # Per-object L2 norm; 0 disables clipping.
 
 # generate_diffusion.py supplies each floor plan's actual X/Z bounding rectangle.
