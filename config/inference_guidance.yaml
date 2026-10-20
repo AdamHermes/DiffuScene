@@ -20,10 +20,10 @@ constraints:
     penetration_threshold: 0.0
   room_boundary:
     enabled: true
-    weight: 10.0
+    weight: 0.0
   walkable:
     enabled: true
-    weight: 1.0
+    weight: 0.0
     type: center_penalty  # EchoScene full_mp default; alternative: edge_gaussian.
     sigma: 0.5
     # Options used only for type: edge_gaussian.
