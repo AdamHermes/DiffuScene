@@ -3,7 +3,6 @@
 #SBATCH --output=logs/diffuscene_%A_%a.out
 #SBATCH --error=logs/diffuscene_%A_%a.err
 #SBATCH --array=0-5                 # Chạy 6 jobs (từ 0 đến 5)
-#SBATCH --nodelist=xgpd2            # Ép chạy trên xgpd2 (vì có sẵn xvfb)
 #SBATCH --nodes=1
 #SBATCH --ntasks=1
 #SBATCH --cpus-per-task=4
