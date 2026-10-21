@@ -2,7 +2,7 @@
 # Alternatively put this mapping under network.inference_guidance in the model YAML.
 enabled: true
 strength: 20.0
-start_ratio: 0.95       # Start after 95% of reverse diffusion has completed.
+start_ratio: 0.90       # Start after 95% of reverse diffusion has completed.
 interval: 1
 grad_clip: 10.1        # Per-object L2 norm; 0 disables clipping.
 
@@ -13,14 +13,14 @@ grad_clip: 10.1        # Per-object L2 norm; 0 disables clipping.
 constraints:
   collision:
     enabled: true
-    weight: 10.0
+    weight: 20.0
     iou_weight: 0.5
     penetration_weight: 2.0
     iou_threshold: 0.02
     penetration_threshold: 0.0
   room_boundary:
     enabled: true
-    weight: 10.0
+    weight: 5.0
   walkable:
     enabled: true
     weight: 1.0
