@@ -13,14 +13,14 @@ grad_clip: 10.1        # Per-object L2 norm; 0 disables clipping.
 constraints:
   collision:
     enabled: true
-    weight: 20.0
+    weight: 10.0
     iou_weight: 0.5
     penetration_weight: 2.0
     iou_threshold: 0.02
     penetration_threshold: 0.0
   room_boundary:
     enabled: true
-    weight: 1.0
+    weight: 10.0
   walkable:
     enabled: true
     weight: 1.0
