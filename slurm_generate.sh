@@ -19,7 +19,7 @@ CONFIG="../config/uncond/diffusion_bedrooms_instancond_lat32_v.yaml"
 # Đã sửa lại file pkl thành bedroom
 THREED_FUTURE="../datasets/3d_front_processed/threed_future_model_bedroom.pkl"
 WEIGHT_FILE="${EXP_DIR}/${EXP_NAME}/model_30000"
-OUT_DIR="${EXP_DIR}/${EXP_NAME}/test30v1"
+OUT_DIR="${EXP_DIR}/${EXP_NAME}/test30v2"
 
 # Cố định số scene mỗi job. Job cuối sẽ tự động ngắt khi hết data.
 SEQ_PER_JOB=30
