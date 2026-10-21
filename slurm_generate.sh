@@ -4,10 +4,10 @@
 #SBATCH --error=logs/diffuscene_%A_%a.err
 #SBATCH --array=0-5                 # Chạy 6 jobs (từ 0 đến 5)
 #SBATCH --nodelist=xgpe2,xgpe6
+#SBATCH --gres=gpu:1                # Xem giải thích về VRAM ở dưới
 #SBATCH --nodes=1
 #SBATCH --ntasks=1
 #SBATCH --cpus-per-task=4
-#SBATCH --gres=gpu:1                # Xem giải thích về VRAM ở dưới
 #SBATCH --mem=32G                   # RAM hệ thống
 #SBATCH --time=04:00:00
 
@@ -19,7 +19,7 @@ CONFIG="../config/uncond/diffusion_livingrooms_instancond_lat32_v.yaml"
 # Đã sửa lại file pkl thành livingroom
 THREED_FUTURE="../datasets/3d_front_processed/threed_future_model_livingroom.pkl"
 WEIGHT_FILE="${EXP_DIR}/${EXP_NAME}/model_96000"
-OUT_DIR="${EXP_DIR}/${EXP_NAME}/final30v1"
+OUT_DIR="${EXP_DIR}/${EXP_NAME}/test30v3"
 
 # Cố định số scene mỗi job. Job cuối sẽ tự động ngắt khi hết data.
 SEQ_PER_JOB=30
