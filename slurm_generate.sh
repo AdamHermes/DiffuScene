@@ -3,7 +3,7 @@
 #SBATCH --output=logs/diffuscene_%A_%a.out
 #SBATCH --error=logs/diffuscene_%A_%a.err
 #SBATCH --array=0-5                 # Chạy 6 jobs (từ 0 đến 5)
-#SBATCH --nodelist=xgpd2
+#SBATCH --nodelist=xgpe2
 #SBATCH --gres=gpu:1                # Xem giải thích về VRAM ở dưới
 #SBATCH --nodes=1
 #SBATCH --ntasks=1
@@ -14,10 +14,10 @@
 mkdir -p logs
 
 EXP_DIR="../models"
-EXP_NAME="pretrained_diffusion/livingrooms_uncond"
-CONFIG="../config/uncond/diffusion_livingrooms_instancond_lat32_v.yaml"
-# Đã sửa lại file pkl thành livingroom
-THREED_FUTURE="../datasets/3d_front_processed/threed_future_model_livingroom.pkl"
+EXP_NAME="pretrained_diffusion/bedrooms_uncond"
+CONFIG="../config/uncond/diffusion_bedrooms_instancond_lat32_v.yaml"
+# Đã sửa lại file pkl thành bedroom
+THREED_FUTURE="../datasets/3d_front_processed/threed_future_model_bedroom.pkl"
 WEIGHT_FILE="${EXP_DIR}/${EXP_NAME}/model_30000"
 OUT_DIR="${EXP_DIR}/${EXP_NAME}/final"
 
