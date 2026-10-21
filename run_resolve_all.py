@@ -3,10 +3,10 @@ Script to resolve bounding box collisions for DiffuScene scenes in:
 bedroom, diningroom, and livingroom.
 
 Reads:
-  - {room}/collision_params_merged.json
-  - 3d_front_processed/{category}_objfeats_32_64/*/boxes.npz  (for room bounds)
+  - ~/DiffuScene/models/pretrained_diffusion/{category}s_uncond/final/collision_params_merged.json
+  - ~/DiffuScene/datasets/3d_front_processed/{category}s_objfeats_32_64/*/boxes.npz  (for room bounds)
 Writes:
-  - {room}/collision_params_resolved.json
+  - ~/DiffuScene/models/pretrained_diffusion/{category}s_uncond/final/collision_params_resolved.json
 
 Key details:
   1. Box representation in resolve_collision.py: [l, h, w, cx, cy, cz].
@@ -257,7 +257,9 @@ def resolve_room(room_dir, category, base_dir, max_iter=500, push_eps=0.02):
 
 
 def main():
-    base_dir = os.path.dirname(os.path.abspath(__file__))
+    project_dir = os.path.expanduser("~/DiffuScene")
+    models_dir = os.path.join(project_dir, "models", "pretrained_diffusion")
+    datasets_dir = os.path.join(project_dir, "datasets")
     rooms = ["bedroom", "diningroom", "livingroom"]
 
     print("=" * 65)
@@ -266,9 +268,9 @@ def main():
     print("=" * 65)
 
     for room in rooms:
-        room_dir = os.path.join(base_dir, room)
+        room_dir = os.path.join(models_dir, f"{room}s_uncond", "final")
         print(f"\n[{room.upper()}] Processing folder: {room_dir}")
-        resolve_room(room_dir, category=room, base_dir=base_dir)
+        resolve_room(room_dir, category=room, base_dir=datasets_dir)
 
     print("=" * 65)
     print("ALL ROOMS PROCESSED SUCCESSFULLY!")
