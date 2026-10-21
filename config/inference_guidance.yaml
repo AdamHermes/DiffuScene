@@ -13,7 +13,7 @@ grad_clip: 10.1        # Per-object L2 norm; 0 disables clipping.
 constraints:
   collision:
     enabled: true
-    weight: 20.0
+    weight: 10.0
     iou_weight: 0.5
     penetration_weight: 2.0
     iou_threshold: 0.02
@@ -23,7 +23,7 @@ constraints:
     weight: 10.0
   walkable:
     enabled: true
-    weight: 2.0
+    weight: 1.0
     type: center_penalty  # EchoScene full_mp default; alternative: edge_gaussian.
     sigma: 0.5
     # Options used only for type: edge_gaussian.
