@@ -20,7 +20,7 @@ constraints:
     penetration_threshold: 0.0
   room_boundary:
     enabled: true
-    weight: 5.0
+    weight: 1.0
   walkable:
     enabled: true
     weight: 1.0
