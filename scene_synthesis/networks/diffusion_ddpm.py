@@ -343,7 +343,8 @@ class GaussianDiffusion:
 
     ''' samples '''
 
-    def p_sample(self, denoise_fn, data, t, condition, condition_cross, noise_fn, clip_denoised=False, return_pred_xstart=False, room_bounds=None):
+    def p_sample(self, denoise_fn, data, t, condition, condition_cross, noise_fn, clip_denoised=False, return_pred_xstart=False, room_bounds=None,
+                 apply_guidance=True, baseline_prediction=None):
         """
         Sample from the model
         """
@@ -351,7 +352,9 @@ class GaussianDiffusion:
             model_mean, model_variance, model_log_variance, pred_xstart = self.p_mean_variance(
                 denoise_fn, data=data, t=t, condition=condition, condition_cross=condition_cross,
                 clip_denoised=clip_denoised, return_pred_xstart=True)
-        if self.physical_guidance is not None:
+        if self.physical_guidance is not None and apply_guidance:
+            if baseline_prediction is not None:
+                pred_xstart = self.physical_guidance.preserve_baseline(pred_xstart, baseline_prediction)
             if not torch.all(t == t[0]):
                 raise ValueError("Physical guidance sampling requires a shared timestep across the batch")
             gradient = self.physical_guidance.gradient(
@@ -368,6 +371,30 @@ class GaussianDiffusion:
         assert sample.shape == pred_xstart.shape
         return (sample, pred_xstart) if return_pred_xstart else sample
 
+    def _p_sample_with_baseline(self, denoise_fn, data, baseline, t, condition, condition_cross,
+                                noise_fn, clip_denoised, room_bounds):
+        """Advance both paths with shared noise, restoring frozen baseline channels."""
+        options = dict(denoise_fn=denoise_fn, t=t, condition=condition,
+                       condition_cross=condition_cross, clip_denoised=clip_denoised,
+                       room_bounds=room_bounds)
+        if self.physical_guidance is None:
+            return self.p_sample(data=data, noise_fn=noise_fn, **options), None
+
+        # Cache the baseline's noise rather than drawing twice or reseeding RNGs.
+        shared_noise = None
+        def same_noise(**kwargs):
+            nonlocal shared_noise
+            if shared_noise is None:
+                shared_noise = noise_fn(**kwargs)
+            return shared_noise
+
+        baseline, baseline_prediction = self.p_sample(
+            data=baseline, noise_fn=same_noise, apply_guidance=False,
+            return_pred_xstart=True, **options)
+        sample = self.p_sample(data=data, noise_fn=same_noise,
+                               baseline_prediction=baseline_prediction, **options)
+        return self.physical_guidance.preserve_baseline(sample, baseline), baseline
+
 
     def p_sample_loop(self, denoise_fn, shape, device, condition, condition_cross,
                       noise_fn=torch.randn, clip_denoised=True, keep_running=False, room_bounds=None):
@@ -382,10 +409,12 @@ class GaussianDiffusion:
             self.physical_guidance.step_stats.clear()
         assert isinstance(shape, (tuple, list))
         img_t = noise_fn(size=shape, dtype=torch.float, device=device)
+        baseline_t = img_t.clone() if self.physical_guidance is not None else None
         for t in tqdm(reversed(range(0, self.num_timesteps if not keep_running else len(self.betas))), desc="Diffusion Steps"):
             t_ = torch.empty(shape[0], dtype=torch.int64, device=device).fill_(t)
-            img_t = self.p_sample(denoise_fn=denoise_fn, data=img_t,t=t_, condition=condition, condition_cross=condition_cross, noise_fn=noise_fn,
-                                  clip_denoised=clip_denoised, return_pred_xstart=False, room_bounds=room_bounds)
+            img_t, baseline_t = self._p_sample_with_baseline(
+                denoise_fn, img_t, baseline_t, t_, condition, condition_cross,
+                noise_fn, clip_denoised, room_bounds)
 
         assert img_t.shape == shape
         return img_t
@@ -406,13 +435,14 @@ class GaussianDiffusion:
             self.physical_guidance.step_stats.clear()
 
         img_t = noise_fn(size=shape, dtype=torch.float, device=device)
+        baseline_t = img_t.clone() if self.physical_guidance is not None else None
         imgs = [img_t]
         for t in reversed(range(0,total_steps)):
 
             t_ = torch.empty(shape[0], dtype=torch.int64, device=device).fill_(t)
-            img_t = self.p_sample(denoise_fn=denoise_fn, data=img_t, t=t_, condition=condition, condition_cross=condition_cross, noise_fn=noise_fn,
-                                  clip_denoised=clip_denoised,
-                                  return_pred_xstart=False, room_bounds=room_bounds)
+            img_t, baseline_t = self._p_sample_with_baseline(
+                denoise_fn, img_t, baseline_t, t_, condition, condition_cross,
+                noise_fn, clip_denoised, room_bounds)
             if t % freq == 0 or t == total_steps-1:
                 imgs.append(img_t)
 
@@ -480,6 +510,7 @@ class GaussianDiffusion:
             self.physical_guidance.step_stats.clear()
         assert isinstance(shape, (tuple, list))
         img_t = noise_fn(size=shape, dtype=torch.float, device=device)
+        baseline_t = img_t.clone() if self.physical_guidance is not None else None
         for t in reversed(range(0, self.num_timesteps if not keep_running else len(self.betas))):
             t_ = torch.empty(shape[0], dtype=torch.int64, device=device).fill_(t)
 
@@ -490,10 +521,13 @@ class GaussianDiffusion:
 
             # combine noisy version of clean scenes & denoising scenes
             img_t = torch.cat([ partial_boxes_t, img_t[:, num_partial:, :] ], dim=1).contiguous()
+            if baseline_t is not None:
+                baseline_t = torch.cat([partial_boxes_t, baseline_t[:, num_partial:, :]], dim=1).contiguous()
 
             # reverse diffusion
-            img_t = self.p_sample(denoise_fn=denoise_fn, data=img_t,t=t_, condition=condition, condition_cross=condition_cross, noise_fn=noise_fn,
-                                clip_denoised=clip_denoised, return_pred_xstart=False, room_bounds=room_bounds)
+            img_t, baseline_t = self._p_sample_with_baseline(
+                denoise_fn, img_t, baseline_t, t_, condition, condition_cross,
+                noise_fn, clip_denoised, room_bounds)
             if t == 0:
                 print('last:', t, self.num_timesteps, len(self.betas))
                 img_t = torch.cat([ partial_boxes, img_t[:, num_partial:, :] ], dim=1).contiguous()

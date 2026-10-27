@@ -66,7 +66,8 @@ full sizes, handles `[cos, sin]` or a normalized scalar angle, and follows the
 mesh renderer's yaw convention. Empty slots are masked using the signed empty
 class channel (`< 0` is furniture); configurations with a separate objectness
 channel use its existing training convention (`>= 0` is furniture). Masks are
-detached. Gradients affect geometry only, not classes or object features.
+detached. Gradients flow only to translations and yaw. Sizes, classes,
+objectness and object features are held constant in the physical losses.
 
 ## Sampling integration and logs
 
@@ -83,6 +84,23 @@ to eps, x0 and v model prediction types and to standard/progressive generation a
 completion. Known completion boxes are restored by the existing sampler.
 DDIM and arrangement with guidance raise explicit errors rather than silently
 returning unguided output. Under `fixedsmall`, variance is zero at t=0.
+
+Standard/progressive generation and completion also maintain an independent
+unguided baseline path with the same initial noise and per-step noise. After
+every step, sizes and all class/objectness/object-feature channels are restored
+from that baseline. Losses use its clean sizes and semantic channels as well.
+This prevents later denoiser steps from indirectly changing furniture count,
+class, dimensions or shape features in response to the guided pose. Only
+translations and yaw may differ. Guidance requires two denoiser evaluations per
+step; no additional random draws are used (the inference denoiser must be in
+evaluation mode and deterministic for exact comparison).
+
+The reference is the baseline generated in the same run, not an existing JSON
+or PLY. Matching an older baseline still requires the same checkpoint, data,
+device, software environment, seed and job boundaries. Use a new output folder
+when regenerating: existing per-job JSON is appended to and meshes are overwritten.
+Frozen shape features select the same 3D-FUTURE model with an unchanged retrieval
+database; existing PLY files are not read or reused.
 
 `scripts/generate_diffusion.py` writes `guidance_losses_<start_index>.jsonl` into
 the output directory. Each scene record contains its config, bounds, seed, and

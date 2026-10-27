@@ -274,6 +274,57 @@ class SamplerTests(unittest.TestCase):
         grad = physical.gradient(self.x0, 4, 10, [-.5, -.5, .5, .5])
         self.assertTrue((grad.norm(dim=-1) <= .010001).all())
 
+    def test_guidance_gradient_only_changes_translation_and_yaw(self):
+        for angle_dim in (1, 2):
+            config = dict(self.config, angle_dim=angle_dim)
+            physical = guidance.PhysicalGuidance(self.guidance_config, config, self.stats_file)
+            prediction = self.x0.clone()
+            if angle_dim == 1:
+                prediction = torch.cat((prediction[..., :6], prediction[..., 7:]), dim=-1)
+            grad = physical.gradient(prediction, 4, 10, [-.5, -.5, .5, .5])
+            self.assertGreater(float(grad[..., :3].abs().sum()), 0)
+            self.assertEqual(float(grad[..., 3:6].abs().sum()), 0)
+            self.assertEqual(float(grad[..., physical.bbox_dim:].abs().sum()), 0)
+
+        # A rotated, nonsquare footprint crossing the boundary must still be
+        # allowed to rotate, while its size gradient remains exactly zero.
+        prediction = self.x0.clone()
+        prediction[..., 0] = .3
+        prediction[..., 3] = 0.
+        prediction[..., 6:8] = torch.tensor([.8, .6])
+        physical = self.physical(dict(self.guidance_config, constraints={"room_boundary": dict(weight=1.)}))
+        grad = physical.gradient(prediction, 4, 10, [-1., -2., 1., 2.])
+        self.assertGreater(float(grad[..., 6:8].abs().sum()), 0)
+        self.assertEqual(float(grad[..., 3:6].abs().sum()), 0)
+
+    def test_full_sampling_preserves_baseline_despite_denoiser_channel_coupling(self):
+        # Couple pose to every output channel: masking only the direct guidance
+        # gradient cannot pass this test across multiple denoising steps.
+        def denoise(data, t, condition, condition_cross):
+            return self.x0 + .1 * data[..., :1].tanh()
+
+        for model_type in ("eps", "x0", "v"):
+            for mode in ("standard", "trajectory", "completion"):
+                with self.subTest(model_type=model_type, mode=mode):
+                    def run(sampler):
+                        torch.manual_seed(19)
+                        options = dict(denoise_fn=denoise, shape=self.x0.shape,
+                                       device=torch.device("cpu"), condition=None, condition_cross=None,
+                                       room_bounds=[-.5, -.5, .5, .5])
+                        if mode == "trajectory":
+                            return sampler.p_sample_loop_trajectory(freq=1, **options)
+                        if mode == "completion":
+                            return [sampler.p_sample_loop_complete(partial_boxes=self.x0[:, :1], **options)]
+                        return [sampler.p_sample_loop(**options)]
+                    baseline = run(self.sampler(enabled=False, model_mean_type=model_type))
+                    baseline_rng = torch.get_rng_state()
+                    result = run(self.sampler(model_mean_type=model_type))
+                    self.assertTrue(torch.equal(torch.get_rng_state(), baseline_rng))
+                    for actual, expected in zip(result, baseline):
+                        torch.testing.assert_close(actual[..., 3:6], expected[..., 3:6], rtol=0, atol=0)
+                        torch.testing.assert_close(actual[..., 8:], expected[..., 8:], rtol=0, atol=0)
+                    self.assertFalse(torch.equal(result[-1][..., :3], baseline[-1][..., :3]))
+
     def test_full_loop_and_trajectory_reset_logs(self):
         sampler = self.sampler()
         options = dict(denoise_fn=lambda *args: self.x0, shape=self.x0.shape,

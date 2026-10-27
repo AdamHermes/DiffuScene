@@ -149,7 +149,7 @@ def compute_walkability_loss(boxes, objectness, room_bounds, type="center_penalt
 
 
 class PhysicalGuidance:
-    """Decode DiffuScene predictions and differentiate energies only w.r.t. x0."""
+    """Differentiate physical energies only w.r.t. translations and yaw."""
 
     def __init__(self, config, network_config, train_stats_file):
         self.config = config
@@ -244,7 +244,9 @@ class PhysicalGuidance:
             return None
         with torch.enable_grad():
             x0 = prediction.detach().requires_grad_(True)
-            boxes = self.decode_boxes(x0)
+            # Sizes and all semantic/shape channels are constants for guidance.
+            pose_only = self.preserve_baseline(x0, x0.detach())
+            boxes = self.decode_boxes(pose_only)
             mask = self.object_mask(x0.detach())
             bounds = self.room_bounds(x0, room_bounds) if set(active) - {"collision"} else None
             losses = {}
@@ -271,3 +273,9 @@ class PhysicalGuidance:
                                     grad_norm_max=float(norms.max()),
                                     **{name: float(value.detach()) for name, value in losses.items()}))
         return gradient.detach()
+
+    def preserve_baseline(self, prediction, baseline):
+        """Keep only translations/yaw from prediction; freeze all other channels."""
+        return torch.cat((prediction[..., :3], baseline[..., 3:6],
+                          prediction[..., 6:self.bbox_dim],
+                          baseline[..., self.bbox_dim:]), dim=-1)
