@@ -13,12 +13,12 @@
 mkdir -p logs
 
 EXP_DIR="../models"
-EXP_NAME="pretrained_diffusion/diningrooms_uncond"
-CONFIG="../config/uncond/diffusion_diningrooms_instancond_lat32_v.yaml"
+EXP_NAME="pretrained_diffusion/diningrooms_bert"
+CONFIG="../config/text/diffusion_diningrooms_instancond_lat32_bert.yaml"
 # Đã sửa lại file pkl thành diningroom
 THREED_FUTURE="../datasets/3d_front_processed/threed_future_model_diningroom.pkl"
-WEIGHT_FILE="${EXP_DIR}/${EXP_NAME}/model_82000"
-OUT_DIR="${EXP_DIR}/${EXP_NAME}/final2"
+WEIGHT_FILE="${EXP_DIR}/${EXP_NAME}/model_148000"
+OUT_DIR="${EXP_DIR}/${EXP_NAME}/final"
 
 # Cố định số scene mỗi job. Job cuối sẽ tự động ngắt khi hết data.
 SEQ_PER_JOB=30
