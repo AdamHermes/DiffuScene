@@ -1,5 +1,6 @@
 
 from math import ceil
+from pathlib import Path
 import numpy as np
 
 from functools import lru_cache
@@ -642,7 +643,8 @@ class Add_Text(DatasetDecoratorBase):
         super().__init__(dataset)
         self.eval = eval
         self.max_sentences = max_sentences
-        self.glove = torchtext.vocab.GloVe(name="6B", dim=50, cache='/cluster/balrog/jtang/DiffuScene/.vector_cache') 
+        glove_cache = Path(__file__).resolve().parents[2] / ".vector_cache"
+        self.glove = torchtext.vocab.GloVe(name="6B", dim=50, cache=str(glove_cache))
         self.max_token_length = max_token_length
 
     def __getitem__(self, idx):
