@@ -1,79 +1,108 @@
-import os
-import json
-import numpy as np
-import trimesh
+"""Export resolved PLY scenes by moving the generator's world-space OBJ meshes.
+
+Only translations may differ between original and resolved JSON. Existing OBJ
+vertices already include size and yaw: do not multiply them by size_scale again.
+Requires numpy and trimesh; no GPU or renderer is needed.
+"""
+
 import argparse
-import glob
+import json
+from pathlib import Path
+import re
+
+import numpy as np
+
+
+def load_scenes(path):
+    data = json.loads(path.read_text(encoding="utf-8"))
+    ids = data["scene_ids"]
+    if len(ids) != len(set(ids)):
+        raise ValueError(f"Duplicate scene_ids in {path}")
+    if len(data["translations"]) != len(ids):
+        raise ValueError(f"Scene count mismatch in {path}")
+    return {sid: {key: data[key][i] for key in ("translations", "sizes", "angles") if key in data}
+            for i, sid in enumerate(ids)}
+
+
+def translation_deltas(original, resolved, scene_id):
+    before = np.asarray(original["translations"], dtype=float).reshape(-1, 3)
+    after = np.asarray(resolved["translations"], dtype=float).reshape(-1, 3)
+    if before.shape != after.shape or not np.isfinite(before).all() or not np.isfinite(after).all():
+        raise ValueError(f"{scene_id}: invalid or mismatched translations")
+    for key in ("sizes", "angles"):
+        if key in original and key in resolved:
+            a, b = np.asarray(original[key]), np.asarray(resolved[key])
+            if a.shape != b.shape or not np.allclose(a, b):
+                raise ValueError(f"{scene_id}: {key} changed; this exporter supports translation-only resolution")
+    return after - before
+
 
 def main():
-    parser = argparse.ArgumentParser()
-    parser.add_argument("--output_dir", required=True, help="Path to merge dir (e.g. merge_d/merged)")
+    parser = argparse.ArgumentParser(description=__doc__)
+    parser.add_argument("--output-dir", "--output_dir", type=Path, required=True,
+                        help="Generation folder containing JSONs and scene_mesh")
+    parser.add_argument("--orig-json", "--orig_json", default="collision_params_merged.json")
+    parser.add_argument("--resolved-json", "--resolved_json", default="collision_params_resolved.json")
+    parser.add_argument("--scene-mesh-dir", "--scene_mesh_dir", default="scene_mesh")
+    parser.add_argument("--export-dir", default="scene_mesh_resolved")
     args = parser.parse_args()
-    
-    orig_json = os.path.join(args.output_dir, "collision_params.json")
-    resolved_json = os.path.join(args.output_dir, "collision_params_resolved.json")
-    scene_mesh_dir = os.path.join(args.output_dir, "scene_mesh")
-    out_ply_dir = os.path.join(args.output_dir, "scene_mesh_resolved")
-    
-    os.makedirs(out_ply_dir, exist_ok=True)
-    
-    with open(orig_json, 'r') as f:
-        orig_data = json.load(f)
-    with open(resolved_json, 'r') as f:
-        res_data = json.load(f)
-        
-    scene_ids = res_data["scene_ids"]
-    
-    for scene_idx, scene_id in enumerate(scene_ids):
-        print(f"Exporting {scene_id}...")
-        
-        orig_trans = orig_data["translations"][scene_idx]
-        res_trans = res_data["translations"][scene_idx]
-        
-        # Load the original individual objs
-        obj_dir = os.path.join(scene_mesh_dir, scene_id + "_individual_objs")
-        if not os.path.exists(obj_dir):
+    base = args.output_dir
+    original = load_scenes(base / args.orig_json)
+    resolved = load_scenes(base / args.resolved_json)
+    mesh_root, output = base / args.scene_mesh_dir, base / args.export_dir
+    if output.resolve() == mesh_root.resolve():
+        parser.error("Export directory must differ from original scene_mesh")
+
+    # Validate scene correspondence and transforms before exporting anything.
+    deltas = {}
+    for sid, scene in resolved.items():
+        if sid not in original:
+            raise ValueError(f"Resolved scene missing from original JSON: {sid}")
+        deltas[sid] = translation_deltas(original[sid], scene, sid)
+
+    import trimesh
+
+    output.mkdir(parents=True, exist_ok=True)
+    exported = skipped = 0
+    for sid in resolved:
+        obj_dir = mesh_root / f"{sid}_individual_objs"
+        if not obj_dir.is_dir():
+            obj_dir = mesh_root / sid
+        paths = sorted(obj_dir.glob("*.obj"))
+        if not paths:
+            print(f"[SKIP] No OBJ files for {sid}: {obj_dir}")
+            skipped += 1
             continue
-            
-        scene_meshes = []
-        
-        # We need to map object index to the correct object_*.obj file
-        # They are usually named object_000.obj, object_001.obj
-        # But wait, there might be floor/ceiling in the json that are skipped in obj exports.
-        # Wait, the objects exported in `_individual_objs` map exactly to the indices in the json?
-        # Let's check how many objects are in the json vs the folder.
-        
-        # In our previous render_resolved.py, we did:
-        # obj_files = sorted(glob.glob(os.path.join(obj_dir, "object_*.obj")))
-        # for i, obj_file in enumerate(obj_files):
-        #     mesh = trimesh.load(obj_file, force='mesh')
-        #     delta_t = np.array(res_trans[i]) - np.array(orig_trans[i])
-        #     mesh.apply_translation(delta_t)
-        #     scene_meshes.append(mesh)
-        
-        # Also include floor/ceiling/walls if they exist (solid_*_wire.png etc, but we only want meshes)
-        
-        # Actually, let's load ALL .obj files. If it's an object_*.obj, we apply the translation.
-        # What if there are other .obj files like room structure? We just load them as is.
-        obj_files = sorted(glob.glob(os.path.join(obj_dir, "object_*.obj")))
-        for i, obj_file in enumerate(obj_files):
-            mesh = trimesh.load(obj_file, force='mesh')
-            if i < len(res_trans):
-                delta_t = np.array(res_trans[i]) - np.array(orig_trans[i])
-                mesh.apply_translation(delta_t)
-            scene_meshes.append(mesh)
-            
-        # Add floor/ceiling if any
-        other_objs = glob.glob(os.path.join(obj_dir, "*.obj"))
-        for obj_file in other_objs:
-            if "object_" not in os.path.basename(obj_file):
-                mesh = trimesh.load(obj_file, force='mesh')
-                scene_meshes.append(mesh)
-                
-        if len(scene_meshes) > 0:
-            combined = trimesh.util.concatenate(scene_meshes)
-            out_file = os.path.join(out_ply_dir, scene_id + ".ply")
-            combined.export(out_file)
+        meshes, seen = [], set()
+        for path in paths:
+            match = re.fullmatch(r"object_(\d+)", path.stem)
+            if match:
+                index = int(match.group(1))
+                if index >= len(deltas[sid]):
+                    print(f"[SKIP] {path.name}: index outside JSON object count")
+                    continue
+                if index in seen:
+                    raise ValueError(f"{sid}: duplicate object index {index}")
+                seen.add(index)
+            elif path.stem.startswith("object_"):
+                raise ValueError(f"Cannot parse object index: {path}")
+            mesh = trimesh.load(str(path), force="mesh", process=False)
+            if match:
+                mesh.apply_translation(deltas[sid][index])
+            meshes.append(mesh)
+        missing = set(range(len(deltas[sid]))) - seen
+        if missing:
+            raise ValueError(f"{sid}: missing OBJ files for object indices {sorted(missing)}")
+        if not meshes:
+            print(f"[SKIP] No matching objects for {sid}")
+            skipped += 1
+            continue
+        out_path = output / f"{sid}.ply"
+        trimesh.util.concatenate(meshes).export(str(out_path))
+        exported += 1
+        print(f"[EXPORTED] {out_path}")
+    print(f"Done: {exported} exported, {skipped} skipped. Output: {output}")
+
 
 if __name__ == "__main__":
     main()
