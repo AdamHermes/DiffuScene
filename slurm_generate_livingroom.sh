@@ -14,7 +14,7 @@ mkdir -p logs
 
 EXP_DIR="../models"
 EXP_NAME="pretrained_diffusion/livingrooms_bert"
-CONFIG="../config/text/diffusion_livingrooms_instancond_lat32_bert.yaml"
+CONFIG="../config/text/diffusion_livingrooms_instancond_lat32_v_bert.yaml"
 # Đã sửa lại file pkl thành livingroom
 THREED_FUTURE="../datasets/3d_front_processed/threed_future_model_livingroom.pkl"
 WEIGHT_FILE="${EXP_DIR}/${EXP_NAME}/model_118000"
