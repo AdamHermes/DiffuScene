@@ -3,6 +3,8 @@
 Only translations may differ between original and resolved JSON. Existing OBJ
 vertices already include size and yaw: do not multiply them by size_scale again.
 Requires numpy and trimesh; no GPU or renderer is needed.
+Default color source: original scene PLY vertex colors, matched before moving
+objects (requires scipy). If unavailable, converts OBJ visuals to vertex colors.
 """
 
 import argparse
@@ -37,6 +39,17 @@ def translation_deltas(original, resolved, scene_id):
     return after - before
 
 
+def matched_vertex_colors(vertices, color_tree, source_colors, tolerance=1e-4):
+    """Transfer RGB(A) at the original coordinates, independent of vertex order."""
+    distances, indices = color_tree.query(vertices)
+    if len(distances) and np.max(distances) > tolerance:
+        raise ValueError(
+            f"OBJ vertices do not match original PLY (max distance {np.max(distances):.6g}); "
+            "verify both exports are from the same generation, or use --color-source obj"
+        )
+    return np.asarray(source_colors)[indices].copy()
+
+
 def main():
     parser = argparse.ArgumentParser(description=__doc__)
     parser.add_argument("--output-dir", "--output_dir", type=Path, required=True,
@@ -45,6 +58,8 @@ def main():
     parser.add_argument("--resolved-json", "--resolved_json", default="collision_params_resolved.json")
     parser.add_argument("--scene-mesh-dir", "--scene_mesh_dir", default="scene_mesh")
     parser.add_argument("--export-dir", default="scene_mesh_resolved")
+    parser.add_argument("--color-source", choices=("auto", "ply", "obj"), default="auto",
+                        help="auto: original PLY colors if present, otherwise OBJ colors; ply: require original PLY colors")
     args = parser.parse_args()
     base = args.output_dir
     original = load_scenes(base / args.orig_json)
@@ -73,6 +88,18 @@ def main():
             print(f"[SKIP] No OBJ files for {sid}: {obj_dir}")
             skipped += 1
             continue
+        color_tree = source_colors = None
+        original_ply = mesh_root / f"{sid}.ply"
+        if args.color_source != "obj" and original_ply.is_file():
+            from scipy.spatial import cKDTree
+
+            colored = trimesh.load(str(original_ply), force="mesh", process=False)
+            if colored.visual.kind in ("vertex", "face"):
+                color_tree = cKDTree(colored.vertices)
+                source_colors = np.asarray(colored.visual.vertex_colors)
+        if args.color_source == "ply" and color_tree is None:
+            raise ValueError(f"Original colored PLY required but unavailable: {original_ply}")
+        print(f"[COLOR] {sid}: {'original PLY vertex colors' if color_tree is not None else 'OBJ visuals'}")
         meshes, seen = [], set()
         for path in paths:
             match = re.fullmatch(r"object_(\d+)", path.stem)
@@ -87,6 +114,17 @@ def main():
             elif path.stem.startswith("object_"):
                 raise ValueError(f"Cannot parse object index: {path}")
             mesh = trimesh.load(str(path), force="mesh", process=False)
+            # Bake colors before translating and concatenating. PLY carries RGB(A),
+            # while OBJ textures/materials must first be converted to vertex colors.
+            if color_tree is not None:
+                colors = matched_vertex_colors(mesh.vertices, color_tree, source_colors)
+            elif mesh.visual.kind == "texture":
+                colors = mesh.visual.to_color().vertex_colors
+            else:
+                if mesh.visual.kind is None:
+                    print(f"[WARNING] No explicit color in {path}; using default vertex colors")
+                colors = mesh.visual.vertex_colors
+            mesh.visual = trimesh.visual.ColorVisuals(mesh=mesh, vertex_colors=colors)
             if match:
                 mesh.apply_translation(deltas[sid][index])
             meshes.append(mesh)
