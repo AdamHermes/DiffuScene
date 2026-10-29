@@ -13,12 +13,12 @@
 mkdir -p logs
 
 echo "Rendering resolved bedroom..."
-xvfb-run -a python scripts/render_resolved.py --output_dir "./models/pretrained_diffusion/bedrooms_uncond/gen_top2down_notexture_nofloor" --orig_json collision_params_merged.json --resolved_json collision_params_resolved.json --render_imgs_dir rendered_resolved
+xvfb-run -a python scripts/render_resolved.py --output_dir "./models/pretrained_diffusion/bedrooms_bert/final" --orig_json collision_params_merged.json --resolved_json collision_params_resolved.json --render_imgs_dir rendered_resolved
 
 echo "Rendering resolved livingroom..."
-xvfb-run -a python scripts/render_resolved.py --output_dir "./models/pretrained_diffusion/livingrooms_uncond/gen_top2down_notexture_nofloor" --orig_json collision_params_merged.json --resolved_json collision_params_resolved.json --render_imgs_dir rendered_resolved
+xvfb-run -a python scripts/render_resolved.py --output_dir "./models/pretrained_diffusion/livingrooms_bert/final" --orig_json collision_params_merged.json --resolved_json collision_params_resolved.json --render_imgs_dir rendered_resolved
 
 echo "Rendering resolved diningroom..."
-xvfb-run -a python scripts/render_resolved.py --output_dir "./models/pretrained_diffusion/diningrooms_uncond/gen_top2down_notexture_nofloor" --orig_json collision_params_merged.json --resolved_json collision_params_resolved.json --render_imgs_dir rendered_resolved
+xvfb-run -a python scripts/render_resolved.py --output_dir "./models/pretrained_diffusion/diningrooms_bert/final" --orig_json collision_params_merged.json --resolved_json collision_params_resolved.json --render_imgs_dir rendered_resolved
 
 echo "Done!"
