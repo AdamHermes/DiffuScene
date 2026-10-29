@@ -12,6 +12,9 @@
 set -euo pipefail
 
 # Activate your DiffuScene Python environment before submitting this job.
+# CLIP-FID dependencies (install once in that environment):
+#   pip install -U clean-fid
+#   pip install git+https://github.com/openai/CLIP.git
 # Override these with exported environment variables if needed.
 export DIFFUSCENE_ROOT="${DIFFUSCENE_ROOT:-$HOME/DiffuScene}"
 PYTHON_BIN="${PYTHON_BIN:-python}"
@@ -30,6 +33,16 @@ from pathlib import Path
 import numpy as np
 import torch
 from cleanfid import fid
+
+try:
+    import clip
+except ImportError as exc:
+    raise SystemExit(
+        "CLIP-FID requires OpenAI CLIP. Install it in this Python environment: "
+        "pip install git+https://github.com/openai/CLIP.git"
+    ) from exc
+if not callable(getattr(clip, "load", None)):
+    raise SystemExit("The installed 'clip' module is not OpenAI CLIP; install git+https://github.com/openai/CLIP.git")
 
 
 root = Path(os.environ["DIFFUSCENE_ROOT"]).expanduser().resolve()
@@ -66,6 +79,7 @@ output.parent.mkdir(parents=True, exist_ok=True)
 report = {
     "device": str(device),
     "mode": "clean",
+    "feature_models": {"FID": "inception_v3", "KID": "inception_v3", "CLIP_FID": "clip_vit_b_32"},
     "reference_selection": "all images directly inside each supplied GT folder; no split filtering",
     "results": [],
 }
@@ -75,14 +89,16 @@ for room, real, fake, n_real, n_fake in inputs:
     random.seed(0)
     np.random.seed(0)
     torch.manual_seed(0)
-    # Adapt KID to reference folders containing fewer than 1000 images.
+    # CleanFID's internal kernel_distance automatically caps subsets at
+    # min(1000, n_real, n_fake); compute_kid does not expose subset arguments.
     subset_size = min(1000, n_real, n_fake)
     print(f"\n{room}: {n_real} real / {n_fake} generated images", flush=True)
     print(f"Real: {real}\nFake: {fake}\nKID subset size: {subset_size}", flush=True)
     options = dict(device=device, mode="clean", num_workers=workers)
     fid_score = float(fid.compute_fid(str(real), str(fake), **options))
-    kid_score = float(fid.compute_kid(
-        str(real), str(fake), num_subsets=100, max_subset_size=subset_size, **options
+    kid_score = float(fid.compute_kid(str(real), str(fake), **options))
+    clip_fid_score = float(fid.compute_fid(
+        str(real), str(fake), model_name="clip_vit_b_32", **options
     ))
     report["results"].append({
         "room": room,
@@ -92,17 +108,19 @@ for room, real, fake, n_real, n_fake in inputs:
         "num_fake": n_fake,
         "kid_subset_size": subset_size,
         "FID": fid_score,
+        "CLIP_FID": clip_fid_score,
         "KID": kid_score,
         "KID_x1000": kid_score * 1000,
     })
     output.write_text(json.dumps(report, indent=2) + "\n", encoding="utf-8")
-    print(f"{room}: FID={fid_score:.6f}  KID={kid_score:.8f}  KID*1000={kid_score * 1000:.6f}", flush=True)
+    print(f"{room}: FID={fid_score:.6f}  CLIP-FID={clip_fid_score:.6f}  KID={kid_score:.8f}  KID*1000={kid_score * 1000:.6f}", flush=True)
 
-print("\nRoom          Real    Fake          FID           KID      KID*1000", flush=True)
+print("\nRoom          Real    Fake          FID     CLIP-FID           KID      KID*1000", flush=True)
 for result in report["results"]:
     print(
         f"{result['room']:<12} {result['num_real']:>5} {result['num_fake']:>7} "
-        f"{result['FID']:>12.6f} {result['KID']:>13.8f} {result['KID_x1000']:>13.6f}",
+        f"{result['FID']:>12.6f} {result['CLIP_FID']:>12.6f} "
+        f"{result['KID']:>13.8f} {result['KID_x1000']:>13.6f}",
         flush=True,
     )
 print(f"\nSaved: {output}", flush=True)
